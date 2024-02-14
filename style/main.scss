@@ -54,17 +54,16 @@ nav a:hover{
 	height: 100px;
 }
 
-ul {
+.image-container {
 	display: flex;
 	flex-wrap: wrap;
 	margin: 5px;
 }
 
-li {
-	height: 40vh;
-	width: 150px;
+.image-div {
+	height: 190px;
+	width: 190px;
 	margin:2px;
-	list-style-type: none;
 	background-color: red;
 	border:1px solid black;
   }

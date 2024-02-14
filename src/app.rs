@@ -59,7 +59,7 @@ fn HomePage() -> impl IntoView {
     view! {
         <h1>"Home"</h1>
         <button on:click=on_click>"Click Me: " {count}</button>
-        <DynamicList initial_length=5/>
+        <DynamicList initial_length=5 initial_period=1/>
     }
 }
 
@@ -67,40 +67,40 @@ fn HomePage() -> impl IntoView {
 fn DynamicList(
     /// The number of counters to begin with.
     initial_length: usize,
+    initial_period: usize,
 ) -> impl IntoView {
-    // This dynamic list will use the <For/> component.
-    // <For/> is a keyed list. This means that each row
-    // has a defined key. If the key does not change, the row
-    // will not be re-rendered. When the list changes, only
-    // the minimum number of changes will be made to the DOM.
-
-    // `next_counter_id` will let us generate unique IDs
-    // we do this by simply incrementing the ID by one
-    // each time we create a counter
     let mut next_counter_id = initial_length;
+    let mut next_date_id = initial_period;
 
-    // we generate an initial list as in <StaticList/>
-    // but this time we include the ID along with the signal
     let initial_counters = (0..initial_length)
         .map(|id| (id, create_signal(id + 1)))
         .collect::<Vec<_>>();
 
-    // now we store that initial list in a signal
-    // this way, we'll be able to modify the list over time,
-    // adding and removing counters, and it will change reactively
+    let initial_date = (0..initial_period)
+        .map(|id| (id, create_signal(id + 1)))
+        .collect::<Vec<_>>();
+
     let (counters, set_counters) = create_signal(initial_counters);
+    let (date, set_date) = create_signal(initial_date);
+
 
     let add_counter = move |_| {
         // create a signal for the new counter
         let sig = create_signal(next_counter_id - 1);
         // add this counter to the list of counters
         set_counters.update(move |counters| {
-            // since `.update()` gives us `&mut T`
-            // we can just use normal Vec methods like `push`
             counters.push((next_counter_id, sig))
         });
-        // increment the ID so it's always unique
         next_counter_id += 1;
+    };
+    let add_date = move |_| {
+        // create a signal for the new counter
+        let sig = create_signal(next_date_id);
+        // add this counter to the list of counters
+        set_date.update(move |date| {
+            date.push((next_date_id, sig))
+        });
+        next_date_id += 1;
     };
 
     
@@ -108,26 +108,30 @@ fn DynamicList(
     view! {
         <div>
             <button on:click=add_counter>
-                "Add Counter"
+                "Add image"
             </button>
-            <ul>
-                // The <For/> component is central here
-                // This allows for efficient, key list rendering
+            <button on:click=add_date>
+            "Add date"
+            </button>
+            <h2>Date</h2>
+            <For
+            each=date
+            key=|counter| counter.0
+            children=move |(count, _set_count)| {
+                view! {
+                    <h2>April {count}</h2>
+                    <div class="image-container">
                 <For
-                    // `each` takes any function that returns an iterator
-                    // this should usually be a signal or derived signal
-                    // if it's not reactive, just render a Vec<_> instead of <For/>
                     each=counters
-                    // the key should be unique and stable for each row
-                    // using an index is usually a bad idea, unless your list
-                    // can only grow, because moving items around inside the list
-                    // means their indices will change and they will all rerender
                     key=|counter| counter.0
-                    // `children` receives each item from your `each` iterator
-                    // and returns a view
                     children=move |(id, (count, set_count))| {
                         view! {
-                            <li 
+                            // <Show
+                            // when=move || { count() % rand::thread_rng().gen_range(1..20) == 0 }
+                            // >
+                            // <h2>1st of April</h2>
+                            // </Show>
+                            <div class="image-div" 
                                 style:width=rand::thread_rng().gen_range(150..350).to_string()+"px"
                                 style:height=rand::thread_rng().gen_range(150..350).to_string()+"px"
                             > 
@@ -140,14 +144,6 @@ fn DynamicList(
                                     on:click=move |_| {
                                         set_counters.update(|counters| {
                                             counters.retain(|(counter_id, (signal, _))| {
-                                                // NOTE: in this example, we are creating the signals
-                                                // in the scope of the parent. This means the memory used to
-                                                // store them will not be reclaimed until the parent component
-                                                // is unmounted. Here, we're removing the signal early (i.e, before
-                                                // the DynamicList is unmounted), so we manually dispose of the signal
-                                                // to avoid leaking memory.
-                                                //
-                                                // This is only necessary in an example with nested signals like this one.
                                                 if counter_id == &id {
                                                     signal.dispose();
                                                 }
@@ -158,12 +154,15 @@ fn DynamicList(
                                 >
                                     "Remove"
                                 </button>
-                                
-                            </li>
+                            </div>
                         }
                     }
                 />
-            </ul>
+            </div>
+                }
+            }
+            />
+            
         </div>
     }
 }
