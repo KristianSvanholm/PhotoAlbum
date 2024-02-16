@@ -4,6 +4,10 @@ use leptos_meta::*;
 use leptos_router::*;
 extern crate rand; 
 use rand::Rng;
+use leptos::html::Div;
+use leptos_use::{UseInfiniteScrollOptions, use_infinite_scroll_with_options};
+
+
 
 
 #[component]
@@ -44,8 +48,8 @@ pub fn App() -> impl IntoView {
 // div picture component
 #[component]
 fn PictureDiv() -> impl IntoView {
-    view! {
-        <div/>
+    view!{
+        <div></div>
     }
 }
 
@@ -72,6 +76,17 @@ fn DynamicList(
 ) -> impl IntoView {
     let mut next_counter_id = initial_length;
     let mut next_date_id = initial_period;
+    let el = create_node_ref::<Div>();
+    let (data, set_data) = create_signal(vec![1, 2, 3, 4, 5, 6]);
+
+    let _ = use_infinite_scroll_with_options(
+        el,
+        move |_| async move {
+            let len = data.with(|d| d.len());
+            set_data.update(|data| *data = (1..len+6).collect());
+        },
+        UseInfiniteScrollOptions::default().distance(10.0),
+    );
 
     let initial_counters = (0..initial_length)
         .map(|id| (id, create_signal(id + 1)))
@@ -172,7 +187,7 @@ fn DynamicList(
 #[component]
 fn TestPage() -> impl IntoView {
     view! {
-        <h1>"test"</h1>
+        <div>testytest</div>
     }
 }
 
