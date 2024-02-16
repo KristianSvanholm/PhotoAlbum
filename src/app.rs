@@ -5,6 +5,7 @@ use leptos_router::*;
 extern crate rand; 
 use rand::Rng;
 
+
 #[component]
 pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
@@ -83,7 +84,6 @@ fn DynamicList(
     let (counters, set_counters) = create_signal(initial_counters);
     let (date, set_date) = create_signal(initial_date);
 
-
     let add_counter = move |_| {
         // create a signal for the new counter
         let sig = create_signal(next_counter_id - 1);
@@ -102,8 +102,9 @@ fn DynamicList(
         });
         next_date_id += 1;
     };
-
     
+
+    // let (data, set_data) = create_signal(vec![1, 2, 3, 4, 5, 6]);
 
     view! {
         <div>
@@ -114,6 +115,7 @@ fn DynamicList(
             "Add date"
             </button>
             <h2>Date</h2>
+            // <For each=move || data.get() key=|i| *i let:item>{ item }</For>
             <For
             each=date
             key=|counter| counter.0
@@ -133,7 +135,7 @@ fn DynamicList(
                             // </Show>
                             <div class="image-div" 
                                 style:width=rand::thread_rng().gen_range(150..350).to_string()+"px"
-                                style:height=rand::thread_rng().gen_range(150..350).to_string()+"px"
+                                // style:height=rand::thread_rng().gen_range(150..350).to_string()+"px"
                             > 
                                 <button
                                     on:click=move |_| set_count.update(|n| *n += 1)
