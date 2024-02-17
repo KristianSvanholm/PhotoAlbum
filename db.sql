@@ -1,10 +1,8 @@
 INSTALL spatial;
 LOAD spatial;
 
-create sequence seq_userid start 1;
-
 create table user(
-    id integer primary key default nextval('seq_userid') not null,
+    uuid integer primary key default gen_random_uuid() not null,
     email varchar(255) not null,
     realName varchar(100) not null,
     password varchar(255) not null,
@@ -15,19 +13,15 @@ create table user(
     invited boolean not null default 0
 );
 
-create sequence seq_folderid start 1;
-
 create table folder(
-    id integer primary key default nextval('seq_folderid') not null,
-    parentId integer references folder(id) null,
+    uuid uuid primary key default gen_random_uuid() not null,
+    parentId uuid references folder(id) null,
     name varchar(75) not null,
     createdDate timestamp default current_timestamp not null
 );
 
-create sequence seq_fileid start 1;
-
 create table file(
-    id integer primary key default nextval('seq_fileid') not null,
+    uuid integer primary key default gen_random_uuid() not null,
     folderId integer references folder(id) not null,
     path varchar(500) not null,
     location POINT_2D null,
