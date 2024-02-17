@@ -84,8 +84,11 @@ nav a:hover{
 
   //Infinite scroll
   .flowdiv{
-	background-color: blue;
-	width: 500px;
-	height: 300px;
-	overflow-y: scroll;
+	width: 100%;
+	height: 70vh; //70% of window size
+	overflow-y:auto;
   }
+body { //This is probably going to be a problem in the future, but also might not be
+	overflow-y: hidden;
+	overflow-x: hidden;
+}
