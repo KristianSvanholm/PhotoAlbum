@@ -40,6 +40,12 @@ nav a:hover{
 	background-color: darkgray;
 }
 
+
+
+//In progress, flex showcase of images
+//
+//https://github.com/xieranmaya/blog/issues/6
+
 .photodiv {
 	background-color: red;
 	width: 150px;
@@ -58,7 +64,8 @@ nav a:hover{
 	display: flex;
 	flex-wrap: wrap;
 	margin: 5px;
-	
+	width: 500px;
+	height: 400px;
 }
 
 .image-div {
@@ -73,4 +80,12 @@ nav a:hover{
   //This is hard-coded, needs to be dynamic based on screen size (@media (max-width: 1100px) and (min-width: 1000px) 
   div:nth-last-child(3) ~ div{
 	flex-grow: 0;
+  }
+
+  //Infinite scroll
+  .flowdiv{
+	background-color: blue;
+	width: 500px;
+	height: 300px;
+	overflow-y: scroll;
   }

@@ -9,7 +9,6 @@ use leptos_use::{UseInfiniteScrollOptions, use_infinite_scroll_with_options};
 
 
 
-
 #[component]
 pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
@@ -64,130 +63,301 @@ fn HomePage() -> impl IntoView {
     view! {
         <h1>"Home"</h1>
         <button on:click=on_click>"Click Me: " {count}</button>
-        <DynamicList initial_length=5 initial_period=1/>
+        <br/>
+        // <DynamicList initial_length=5 initial_period=1/>
+        <InfiniteFeed/>
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct Image {
+    src: String,
+    date: String,
+}
+
+fn fetch_image() -> Vec<(i32,Vec<(i32,Vec<(i32,Vec<Image>)>)>)> {
+
+    //TEST DATA
+    //======================================================
+    let mut images = vec![
+        Image {
+            src: "pic1.jpg".to_string(),
+            date: "2024-01-15".to_string(),
+        },
+        Image {
+            src: "pic1.jpg".to_string(),
+            date: "2024-01-15".to_string(),
+        },
+        Image {
+            src: "pic1.jpg".to_string(),
+            date: "2024-01-15".to_string(),
+        },
+        Image {
+            src: "pic1.jpg".to_string(),
+            date: "2024-01-15".to_string(),
+        },
+        Image {
+            src: "pic1.jpg".to_string(),
+            date: "2024-01-15".to_string(),
+        },
+        Image {
+            src: "pic1.jpg".to_string(),
+            date: "2024-01-15".to_string(),
+        },
+        Image {
+            src: "pic2.jpg".to_string(),
+            date: "2024-02-20".to_string(),
+        },
+        Image {
+            src: "pic3.jpg".to_string(),
+            date: "2024-01-10".to_string(),
+        },
+        Image {
+            src: "pic3.jpg".to_string(),
+            date: "2024-01-10".to_string(),
+        },
+        Image {
+            src: "pic3.jpg".to_string(),
+            date: "2024-01-10".to_string(),
+        },
+        Image {
+            src: "pic3.jpg".to_string(),
+            date: "2024-01-10".to_string(),
+        },
+        Image {
+            src: "pic3.jpg".to_string(),
+            date: "2024-01-10".to_string(),
+        },
+        Image {
+            src: "pic3.jpg".to_string(),
+            date: "2024-01-10".to_string(),
+        },
+        Image {
+            src: "pic3.jpg".to_string(),
+            date: "2024-01-10".to_string(),
+        },
+        Image {
+            src: "pic3.jpg".to_string(),
+            date: "2024-01-10".to_string(),
+        },
+        Image {
+            src: "pic3.jpg".to_string(),
+            date: "2024-01-10".to_string(),
+        },
+        Image {
+            src: "pic3.jpg".to_string(),
+            date: "2024-01-10".to_string(),
+        },
+        Image {
+            src: "pic3.jpg".to_string(),
+            date: "2024-01-10".to_string(),
+        },
+        Image {
+            src: "pic3.jpg".to_string(),
+            date: "2024-01-10".to_string(),
+        },
+        Image {
+            src: "pic3.jpg".to_string(),
+            date: "2024-01-10".to_string(),
+        },
+        Image {
+            src: "pic3.jpg".to_string(),
+            date: "2024-01-10".to_string(),
+        },
+        Image {
+            src: "pic3.jpg".to_string(),
+            date: "2024-01-10".to_string(),
+        },
+        Image {
+            src: "pic3.jpg".to_string(),
+            date: "2024-01-10".to_string(),
+        },
+        Image {
+            src: "pic3.jpg".to_string(),
+            date: "2024-01-10".to_string(),
+        },
+        Image {
+            src: "pic3.jpg".to_string(),
+            date: "2024-01-10".to_string(),
+        },
+        Image {
+            src: "pic4.jpg".to_string(),
+            date: "2024-03-05".to_string(),
+        },
+        Image {
+            src: "pic5.jpg".to_string(),
+            date: "2023-02-08".to_string(),
+        },
+        Image {
+            src: "pic6.jpg".to_string(),
+            date: "2023-01-21".to_string(),
+        },
+        Image {
+            src: "pic7.jpg".to_string(),
+            date: "2024-03-10".to_string(),
+        },
+        Image {
+            src: "pic8.jpg".to_string(),
+            date: "2024-02-15".to_string(),
+        },
+        Image {
+            src: "pic9.jpg".to_string(),
+            date: "2024-01-10".to_string(),
+        },
+        Image {
+            src: "pic10.jpg".to_string(),
+            date: "2024-03-01".to_string(),
+        },
+    ];
+    //=====================================================
+
+
+    //Sort images by date (yyyy-mm-dd)
+    images.sort_by(|a, b| a.date.cmp(&b.date));
+
+    //Vec<(Year, Vec<(Month, Vec<Day, Vec<Image>)>)>)>
+    let mut sorted_images: Vec<(i32, Vec<(i32, Vec<(i32, Vec<Image>)>)>)> = Vec::new();
+
+    //Iterate the list and sort by year, then month, then day
+    for image in &images {
+        //Parse dates to i32
+        let year = image.date[..4].parse::<i32>().unwrap();
+        let month = image.date[5..7].parse::<i32>().unwrap();
+        let day = image.date[8..10].parse::<i32>().unwrap();
+
+        //Check if the year, month or day exists, to ensure there is no repetition
+        if let Some((_, months)) = sorted_images.iter_mut().find(|(y, _)| *y == year) {
+            if let Some((_, days)) = months.iter_mut().find(|(m, _)| *m == month) {
+                if let Some((_, images_for_day)) = days.iter_mut().find(|(d, _)| *d == day) {
+                    images_for_day.push(image.clone());
+                } else {
+                    days.push((day, vec![image.clone()]));
+                    days.sort_by_key(|(d, _)| *d);
+                }
+            } else {
+                months.push((month, vec![(day, vec![image.clone()])]));
+                months.sort_by_key(|(m, _)| *m);
+            }
+        } else {
+            sorted_images.push((year, vec![(month, vec![(day, vec![image.clone()])])]));
+            sorted_images.sort_by_key(|(y, _)| *y);
+        }
+    }
+
+    //Not needed, but keeping it beacuse Im scared to delete it :(
+    // sorted_images.sort_by_key(|(y, _)| *y);
+        
+    sorted_images
+}
+
 #[component]
-fn DynamicList(
-    /// The number of counters to begin with.
-    initial_length: usize,
-    initial_period: usize,
-) -> impl IntoView {
-    let mut next_counter_id = initial_length;
-    let mut next_date_id = initial_period;
+fn infinite_feed() -> impl IntoView {
+
+    let (photos, _set_photos) = create_signal(fetch_image());
+    
     let el = create_node_ref::<Div>();
+
+    //old
+    // let (data, set_data) = create_signal(vec![1, 2, 3, 4, 5, 6]);
+
+    let _ = use_infinite_scroll_with_options(
+        el,
+        move |_| async move {
+            //old
+            // let len = data.with_untracked(|d| d.len());
+            // set_data.update(|data| *data = (1..len + 6).collect());
+            let len = data.with_untracked(|d| d.len());
+            set_data.update(|data| *data = (1..len + 6).collect());
+        },
+        UseInfiniteScrollOptions::default().distance(10.0),
+    );
+
+    view!{
+        //Year
+        <div class="flowdiv" node_ref=el>
+        <For 
+          each=photos 
+          key=|yearkey| yearkey.clone() 
+          let:year>
+            <br/>
+            <br/>
+            {year.0}
+            <br/>
+            //Month
+            <For 
+              each=move||{year.1.clone()}
+              key=|monthkey| monthkey.clone()
+              let:month>
+                <br/>
+                {match month.0 {
+                    1 => "January",
+                    2 => "February",
+                    3 => "March",
+                    4 => "April",
+                    5 => "May",
+                    6 => "June",
+                    7 => "July",
+                    8 => "August",
+                    9 => "September",
+                    10 => "October",
+                    11 => "November",
+                    12 => "December",
+                    _ => ""
+                }}
+                <br/>
+                //Day
+                <For 
+                  each=move||{month.1.clone()}
+                  key=|daykey| daykey.clone()
+                  let:day>
+                    // --{day.0} 
+                    //Vec of images in one day
+                    <For 
+                      each=move||{day.1.clone()}
+                      key=|imgkey| imgkey.clone()
+                      let:img>
+                        <img src={img.src} 
+                        style:width=rand::thread_rng().gen_range(150..350).to_string()+"px"
+                        style:height=rand::thread_rng().gen_range(150..350).to_string()+"px"
+                        />
+                    </For>
+                </For>
+            </For>
+        </For>
+        </div>
+
+
+        
+    }
+}
+
+
+#[component]
+fn TestPage() -> impl IntoView {
+    let el = create_node_ref::<Div>();
+
     let (data, set_data) = create_signal(vec![1, 2, 3, 4, 5, 6]);
 
     let _ = use_infinite_scroll_with_options(
         el,
         move |_| async move {
-            let len = data.with(|d| d.len());
-            set_data.update(|data| *data = (1..len+6).collect());
+            let len = data.with_untracked(|d| d.len());
+            set_data.update(|data| *data = (1..len + 6).collect());
         },
         UseInfiniteScrollOptions::default().distance(10.0),
     );
 
-    let initial_counters = (0..initial_length)
-        .map(|id| (id, create_signal(id + 1)))
-        .collect::<Vec<_>>();
-
-    let initial_date = (0..initial_period)
-        .map(|id| (id, create_signal(id + 1)))
-        .collect::<Vec<_>>();
-
-    let (counters, set_counters) = create_signal(initial_counters);
-    let (date, set_date) = create_signal(initial_date);
-
-    let add_counter = move |_| {
-        // create a signal for the new counter
-        let sig = create_signal(next_counter_id - 1);
-        // add this counter to the list of counters
-        set_counters.update(move |counters| {
-            counters.push((next_counter_id, sig))
-        });
-        next_counter_id += 1;
-    };
-    let add_date = move |_| {
-        // create a signal for the new counter
-        let sig = create_signal(next_date_id);
-        // add this counter to the list of counters
-        set_date.update(move |date| {
-            date.push((next_date_id, sig))
-        });
-        next_date_id += 1;
-    };
-    
-
-    // let (data, set_data) = create_signal(vec![1, 2, 3, 4, 5, 6]);
-
     view! {
-        <div>
-            <button on:click=add_counter>
-                "Add image"
-            </button>
-            <button on:click=add_date>
-            "Add date"
-            </button>
-            <h2>Date</h2>
-            // <For each=move || data.get() key=|i| *i let:item>{ item }</For>
-            <For
-            each=date
-            key=|counter| counter.0
-            children=move |(count, _set_count)| {
-                view! {
-                    <h2>April {count}</h2>
-                    <div class="image-container">
-                <For
-                    each=counters
-                    key=|counter| counter.0
-                    children=move |(id, (count, set_count))| {
-                        view! {
-                            // <Show
-                            // when=move || { count() % rand::thread_rng().gen_range(1..20) == 0 }
-                            // >
-                            // <h2>1st of April</h2>
-                            // </Show>
-                            <div class="image-div" 
-                                style:width=rand::thread_rng().gen_range(150..350).to_string()+"px"
-                                // style:height=rand::thread_rng().gen_range(150..350).to_string()+"px"
-                            > 
-                                <button
-                                    on:click=move |_| set_count.update(|n| *n += 1)
-                                >
-                                    {count}
-                                </button>
-                                <button
-                                    on:click=move |_| {
-                                        set_counters.update(|counters| {
-                                            counters.retain(|(counter_id, (signal, _))| {
-                                                if counter_id == &id {
-                                                    signal.dispose();
-                                                }
-                                                counter_id != &id
-                                            })
-                                        });
-                                    }
-                                >
-                                    "Remove"
-                                </button>
-                            </div>
-                        }
-                    }
-                />
-            </div>
-                }
-            }
-            />
-            
+        <div
+        class="flowdiv"
+            node_ref=el
+        >
+            <ul>
+            <For each=move || data.get() key=|i| *i let:item>
+                <li>{item}</li>
+            </For>
+            </ul>
         </div>
-    }
-}
-
-#[component]
-fn TestPage() -> impl IntoView {
-    view! {
-        <div>testytest</div>
     }
 }
 

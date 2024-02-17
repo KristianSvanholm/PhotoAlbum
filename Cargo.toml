@@ -32,6 +32,7 @@ ssr = [
     "dep:tower-http",
     "dep:leptos_axum",
     "leptos/ssr",
+    "leptos-use/ssr",
     "leptos_meta/ssr",
     "leptos_router/ssr",
     "dep:tracing",
