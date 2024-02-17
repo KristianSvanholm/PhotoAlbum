@@ -266,15 +266,13 @@ fn infinite_feed() -> impl IntoView {
             //old
             // let len = data.with_untracked(|d| d.len());
             // set_data.update(|data| *data = (1..len + 6).collect());
-            let len = data.with_untracked(|d| d.len());
-            set_data.update(|data| *data = (1..len + 6).collect());
         },
         UseInfiniteScrollOptions::default().distance(10.0),
     );
 
     view!{
         //Year
-        <div class="flowdiv" node_ref=el>
+        <div>
         <For 
           each=photos 
           key=|yearkey| yearkey.clone() 
