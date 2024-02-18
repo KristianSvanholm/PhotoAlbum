@@ -6,6 +6,8 @@ async fn main() {
     use leptos_axum::{generate_route_list, LeptosRoutes};
     use photo_album::app::*;
     use photo_album::fileserv::file_and_error_handler;
+    let _ = photo_album::app::db::db_init().await;
+
 
     // Setting get_configuration(None) means we'll be using cargo-leptos's env values
     // For deployment these variables are:
