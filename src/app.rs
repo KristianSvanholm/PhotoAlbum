@@ -69,7 +69,7 @@ struct Image {
     date: String,
 }
 
-const FETCH_IMAGE_COUNT: usize = 50;
+const FETCH_IMAGE_COUNT: usize = 20;
 
 fn fetch_images(start: usize, count: usize) -> Vec<Image> {
     let mut images = Vec::new();
