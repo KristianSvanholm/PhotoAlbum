@@ -147,8 +147,8 @@ fn TestPage() -> impl IntoView {
 
     view! {
         <div
-        class="flowdiv"
-            node_ref=el
+          class="flowdiv"
+          node_ref=el
         >
             <ul>
             <For each=move || data.get() key=|i| *i let:item>
