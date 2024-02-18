@@ -2,7 +2,7 @@ INSTALL spatial;
 LOAD spatial;
 
 create table user(
-    uuid integer primary key default gen_random_uuid() not null,
+    id integer primary key default AUTOINCREMENT not null,
     email varchar(255) not null,
     realName varchar(100) not null,
     password varchar(255) not null,
@@ -14,14 +14,14 @@ create table user(
 );
 
 create table folder(
-    uuid uuid primary key default gen_random_uuid() not null,
+    id integer primary key default autoincrement not null,
     parentId uuid references folder(id) null,
     name varchar(75) not null,
     createdDate timestamp default current_timestamp not null
 );
 
 create table file(
-    uuid integer primary key default gen_random_uuid() not null,
+    id integer primary key default autoincrement not null,
     folderId integer references folder(id) not null,
     path varchar(500) not null,
     location POINT_2D null,
