@@ -22,6 +22,7 @@ tracing = { version = "0.1", optional = true }
 http = "1"
 serde = "1.0.196"
 rusqlite = { version = "0.31.0", features = ["bundled"], optional = true }
+uuid = { version = "1.7.0", features = ["v4", "fast-rng"] }
 
 [features]
 hydrate = ["leptos/hydrate", "leptos_meta/hydrate", "leptos_router/hydrate"]
