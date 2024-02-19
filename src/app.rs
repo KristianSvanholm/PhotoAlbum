@@ -39,7 +39,7 @@ pub fn App() -> impl IntoView {
 }
 
 
-#[derive(Debug, leptos::server_fn::serde::Serialize, leptos::server_fn::serde::Deserialize)]
+#[derive(Debug, Clone, leptos::server_fn::serde::Serialize, leptos::server_fn::serde::Deserialize)]
 pub struct Folder {
     id: i32,
     parent_id: Option<i32>,
@@ -50,16 +50,16 @@ pub struct Folder {
 pub mod db;
 
 #[server(TestDB, "/api")]
-pub async fn test_db() -> Result<Vec<Folder>, ServerFnError> {
+pub async fn test_db(name: String) -> Result<Vec<Folder>, ServerFnError> {
     let conn = crate::app::db::db().await?;
 
-    /* // Insert & parameters example. Uncomment to add to DB.
+     // Insert & parameters example. Uncomment to add to DB.
     use rusqlite::params;
     let _ = conn.execute(
             "INSERT INTO folder (name) values (?1)",
-            params!["hello"],
+            params![name],
         )?; 
-    */
+    
 
     let mut stmnt = conn.prepare("SELECT id, parentId, name FROM folder")?;
 
@@ -77,20 +77,37 @@ pub async fn test_db() -> Result<Vec<Folder>, ServerFnError> {
         vec.push(folder.unwrap());
     }
 
-    Ok(vec)
+    use std::cmp;
+    Ok(vec[cmp::max(vec.len()-cmp::min(vec.len(),10),0)..].to_vec())
 }
 
 #[component]
 pub fn TestDBButton() -> impl IntoView {
+
+    let (name, set_name) = create_signal("Controlled".to_string());
+    let input_el: NodeRef<html::Input> = create_node_ref();
+
+    let on_submit =  move |ev: leptos::ev::SubmitEvent| {
+        ev.prevent_default();
+
+        let value = input_el().expect("<Input> should be mounted").value();
+        spawn_local(async {
+                logging::log!("{:?}", test_db(value).await.unwrap());
+        });
+
+    };
+
+
     view! {
-        <button on:click=move |_| {
-            spawn_local(async {
-                logging::log!("{:?}",test_db().await.unwrap());
-            });
-        }>
-            "Add Todo"
-        </button>
+        <form on:submit=on_submit>
+            <input type="text"
+                value=name
+                node_ref=input_el
+            />
+            <input type="submit" value="Submit"/>
+        </form>
     }
+
 }
 
 /// Renders the home page of your application.
