@@ -105,7 +105,7 @@ fn infinite_feed() -> impl IntoView {
             wImages.update(|images| images.extend(newImages));
             wStart.set(newStart);
         },
-        UseInfiniteScrollOptions::default().distance(10.0),
+        UseInfiniteScrollOptions::default().distance(250.0),
     );
 
     wImages.set(fetch_images(start.get(), FETCH_IMAGE_COUNT));
