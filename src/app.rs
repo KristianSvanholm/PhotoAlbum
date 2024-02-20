@@ -161,7 +161,7 @@ fn infinite_feed() -> impl IntoView {
         el,
         move |_| async move {
             let count = FETCH_IMAGE_COUNT; 
-            let newStart = start.get() + count;
+            let newStart = start.get_untracked() + count;
             let newImages = fetch_images(newStart, count);
             wImages.update(|images| images.extend(newImages));
             wStart.set(newStart);
@@ -169,7 +169,6 @@ fn infinite_feed() -> impl IntoView {
         UseInfiniteScrollOptions::default().distance(250.0),
     );
 
-    wImages.set(fetch_images(start.get(), FETCH_IMAGE_COUNT));
     view! {
         <div
             class="flowdiv"
