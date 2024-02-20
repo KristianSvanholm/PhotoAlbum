@@ -20,6 +20,9 @@ wasm-bindgen = "=0.2.89"
 thiserror = "1"
 tracing = { version = "0.1", optional = true }
 http = "1"
+serde = "1.0.196"
+rusqlite = { version = "0.31.0", features = ["bundled"], optional = true }
+uuid = { version = "1.7.0", features = ["v4", "fast-rng"] }
 rand = "0.8"
 leptos-use = "0.10.2"
 
@@ -36,6 +39,7 @@ ssr = [
     "leptos_meta/ssr",
     "leptos_router/ssr",
     "dep:tracing",
+    "dep:rusqlite",
 ]
 
 # Defines a size-optimized profile for the WASM bundle in release mode
@@ -66,7 +70,7 @@ style-file = "style/main.scss"
 assets-dir = "public"
 
 # The IP and port (ex: 127.0.0.1:3000) where the server serves the content. Use it in your server setup.
-site-addr = "127.0.0.1:3000"
+site-addr = "0.0.0.0:3000"
 
 # The port to use for automatic reload monitoring
 reload-port = 3001
