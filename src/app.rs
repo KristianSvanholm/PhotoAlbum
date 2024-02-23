@@ -3,11 +3,6 @@ use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
 
-
-#[cfg(feature = "ssr")]
-pub mod db;
-pub mod upload;
-
 #[component]
 pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
@@ -55,9 +50,10 @@ pub struct Folder {
 #[server(TestDB, "/api")]
 pub async fn test_db(name: String) -> Result<Vec<Folder>, ServerFnError> {
     use uuid::Uuid;
+    use crate::components::db::db;
 
     // Connect to db
-    let conn = crate::app::db::db().await?;
+    let conn = db().await?;
 
     // Insert & parameters example. Uncomment to add to DB.
     use rusqlite::params;
@@ -114,7 +110,7 @@ fn HomePage() -> impl IntoView {
     // Creates a reactive value to update the button
     let (count, set_count) = create_signal(0);
     let on_click = move |_| set_count.update(|count| *count += 1);
-    use upload::UploadMedia;
+    use crate::components::upload::UploadMedia;
 
     view! {
         <UploadMedia></UploadMedia>
