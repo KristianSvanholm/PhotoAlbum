@@ -3,6 +3,11 @@ use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
 
+
+#[cfg(feature = "ssr")]
+pub mod db;
+pub mod upload;
+
 #[component]
 pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
@@ -46,9 +51,6 @@ pub struct Folder {
     parent_id: Option<String>,
     name: String,
 }
-
-#[cfg(feature = "ssr")]
-pub mod db;
 
 #[server(TestDB, "/api")]
 pub async fn test_db(name: String) -> Result<Vec<Folder>, ServerFnError> {
@@ -112,8 +114,10 @@ fn HomePage() -> impl IntoView {
     // Creates a reactive value to update the button
     let (count, set_count) = create_signal(0);
     let on_click = move |_| set_count.update(|count| *count += 1);
+    use upload::UploadMedia;
 
     view! {
+        <UploadMedia></UploadMedia>
         <TestDBButton></TestDBButton>
         <h1>"Home"</h1>
         <h1>HELLO WORLD</h1>
