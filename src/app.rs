@@ -43,10 +43,14 @@ pub fn App() -> impl IntoView {
 #[component]
 fn HomePage() -> impl IntoView {
     use crate::components::testdb::TestDBButton;
+    use crate::components::feed::InfiniteFeed;
 
     view! {
         <h1>"Home"</h1>
         <TestDBButton></TestDBButton>
+        // <DynamicList initial_length=5 initial_period=1/>
+        <InfiniteFeed/>
+
     }
 }
 
