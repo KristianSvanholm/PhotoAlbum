@@ -11,8 +11,11 @@ pub async fn upload_media_server(media: Vec<Vec<u8>>) -> Result<(), ServerFnErro
         let _ = fs::create_dir_all("./album")?;
     }
 
+
     for bytes in media {
-        let _ = fs::write("./album/test.txt", bytes)?;
+        //let file = web_sys::File::new("test", bytes);
+        //logging::log!("{:?}", &bytes);
+        let _ = fs::write("./album/test.png", bytes)?;
     }
     Ok(())
 }
@@ -34,7 +37,7 @@ pub fn UploadMedia() -> impl IntoView {
     };
 
     view! {
-        <input type="file" multiple="multiple" accpet="image/png, image/gif, image/jpeg"
+        <input type="file" multiple="multiple" accept="image/png, image/gif, image/jpeg"
             on:change=on_change
         />
         <button on:click=move |_| {
