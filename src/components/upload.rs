@@ -4,9 +4,15 @@ use web_sys::*;
 
 #[server(Upload, "/api")]
 pub async fn upload_media_server(media: Vec<Vec<u8>>) -> Result<(), ServerFnError> {
-    //logging::log!("files: {:?}", String::from_utf8_lossy(media));
+    use std::fs;
+    use std::path::Path;
+
+    if !Path::new("./album").exists() {
+        let _ = fs::create_dir_all("./album")?;
+    }
+
     for bytes in media {
-        logging::log!("Got data {:?}", String::from_utf8_lossy(&bytes));
+        let _ = fs::write("./album/test.txt", bytes)?;
     }
     Ok(())
 }
@@ -28,7 +34,7 @@ pub fn UploadMedia() -> impl IntoView {
     };
 
     view! {
-        <input type="file" multiple="multiple"
+        <input type="file" multiple="multiple" accpet="image/png, image/gif, image/jpeg"
             on:change=on_change
         />
         <button on:click=move |_| {
