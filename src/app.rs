@@ -130,24 +130,58 @@ struct Image {
     date: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum Element {
+    String(String),
+    Image(Image),
+}
+
 const FETCH_IMAGE_COUNT: usize = 20;
 
-fn fetch_images(start: usize, count: usize) -> Vec<Image> {
+fn fetch_images(start: usize, count: usize) -> Vec<Element> {
     let mut images = Vec::new();
+    //Generate images for infinite feed
     for i in start..start + count {
         let image = Image {
-            src: format!("https://picsum.photos/200/300?random={}", i),
+            src: format!("https://picsum.photos/{}/{}?random={}",rand::thread_rng().gen_range(200..500).to_string(),rand::thread_rng().gen_range(200..500).to_string(), i),
             date: 
                 format!(
                     "{}-{:02}-{:02}",
-                    rand::thread_rng().gen_range(2010..2022),
-                    rand::thread_rng().gen_range(1..13),
-                    rand::thread_rng().gen_range(1..29)
+                    // rand::thread_rng().gen_range(2010..2022),
+                    2021,
+                    // rand::thread_rng().gen_range(1..13),
+                    2, 
+                    rand::thread_rng().gen_range(1..29),
                 ),
         };
         images.push(image);
     }
-    images
+    images.sort_by_key(|image| image.date.clone());
+    
+    //New vector with months and years seperated
+    let mut grouped_images: Vec<Element> = Vec::new();
+
+    //Prevent repeats of months and years
+    let mut current_month = String::new();
+    let mut current_year = String::new();
+
+    //Iterates over sorted images and adds years and months
+    for image in images {
+        let year = image.date[0..4].to_string();
+        let month = image.date[5..7].to_string();
+        if month != current_month || year != current_year{
+            //Add year on change
+            if year != current_year{
+                grouped_images.push(Element::String(year.to_string()));
+                current_year = year.to_string();
+            }
+            //Add month on change
+            grouped_images.push(Element::String(month.to_string()));
+            current_month = month.to_string();
+        }
+        grouped_images.push(Element::Image(image));
+    }
+    grouped_images
 }
 
 #[component]
@@ -169,21 +203,51 @@ fn infinite_feed() -> impl IntoView {
         UseInfiniteScrollOptions::default().distance(250.0),
     );
 
-    wImages.set(fetch_images(start.get(), FETCH_IMAGE_COUNT));
+    wImages.set(fetch_images(start.get(), 1)); //Starting count too high leads to problems??
     view! {
         <div
             class="flowdiv"
             node_ref=el
-            style="display: flex; flex-wrap: wrap; gap: 10px;"
             >
+            //Loop through all given images
             <For each=move || images.get() key=|i| i.clone() let:image>
-                <div class="image">
-                    <img 
-                    src=image.src
-                    style=format!("height: {}px; width: {}px;", rand::thread_rng().gen_range(250..300), rand::thread_rng().gen_range(250..300))
-                    />
-                    <p>{image.date}</p>
-                </div>
+                {match image{
+                    //Image
+                    Element::Image(..) => view!{
+                        <div class="image">
+                            <img 
+                            src={match image{
+                                Element::Image(ref img) => img.src.to_string(),
+                                _ => "".to_string()
+                            } 
+                            }
+                            // style=format!("height: {}px; width: {}px;", rand::thread_rng().gen_range(150..550), rand::thread_rng().gen_range(150..550))
+                            />
+                        </div>
+                    },
+                    //Date
+                    Element::String(ref date) => {
+                        let date_clone = date.clone(); //Allow str to reach all the way in
+                        view!{
+                        <div class="break date_title">{
+                            match date_clone.parse().unwrap() {
+                                1 => "January".to_string(),
+                                2 => "February".to_string(),
+                                3 => "March".to_string(),
+                                4 => "April".to_string(),
+                                5 => "May".to_string(),
+                                6 => "June".to_string(),
+                                7 => "July".to_string(),
+                                8 => "August".to_string(),
+                                9 => "September".to_string(),
+                                10 => "October".to_string(),
+                                11 => "November".to_string(),
+                                12 => "December".to_string(),
+                                _ => date_clone
+                            }
+                        }</div>
+                    }}
+                }}
             </For>
         </div>
     }
