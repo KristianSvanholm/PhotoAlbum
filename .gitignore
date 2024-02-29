@@ -14,3 +14,6 @@ playwright/.cache/
 
 # Database file
 database.db
+
+#Album folder
+album/
