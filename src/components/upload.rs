@@ -13,9 +13,14 @@ pub async fn upload_media_server(media: Vec<Vec<u8>>) -> Result<(), ServerFnErro
 
 
     for bytes in media {
+        use uuid::Uuid;
+        let id = Uuid::new_v4();
+        let file_ext = "png";
+        let path = format!("./album/{}.{}", id.to_string(), file_ext);
+        let _ = fs::write(path, bytes)?;
+
         //let file = web_sys::File::new("test", bytes);
         //logging::log!("{:?}", &bytes);
-        let _ = fs::write("./album/test.png", bytes)?;
     }
     Ok(())
 }
