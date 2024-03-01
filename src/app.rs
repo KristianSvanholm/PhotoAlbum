@@ -169,9 +169,7 @@ fn fetch_images(start: usize, count: usize) -> Vec<Element> {
                 format!(
                     "{}-{:02}-{:02}",
                     rand::thread_rng().gen_range(2010..2023),
-                    // 2023,
-                    // rand::thread_rng().gen_range(1..13),
-                    8, 
+                    rand::thread_rng().gen_range(1..13),
                     rand::thread_rng().gen_range(1..29),
                 ),
         };
@@ -186,7 +184,6 @@ fn fetch_images(start: usize, count: usize) -> Vec<Element> {
     let mut previous_date = PREVIOUS_DATE.lock().unwrap();
     let mut current_month = previous_date.month.clone();
     let mut current_year = previous_date.year.clone();
-    print!(".{}-{}.\n",current_month,current_year);
 
     //Iterates over sorted images and adds years and months
     for image in images {
@@ -210,13 +207,14 @@ fn fetch_images(start: usize, count: usize) -> Vec<Element> {
     grouped_images
 }
 
+//Creates an infinite feed of images
 #[component]
 fn infinite_feed() -> impl IntoView {
     let (images, wImages) = create_signal(Vec::new());
     let (start, wStart) = create_signal(0);
-
     let el = create_node_ref::<Div>();
 
+    //Creates and loads infinite feed
     let _ = use_infinite_scroll_with_options(
         el,
         move |_| async move {
@@ -229,13 +227,14 @@ fn infinite_feed() -> impl IntoView {
         UseInfiniteScrollOptions::default().distance(250.0),
     );
 
-    wImages.set(fetch_images(start.get(), 20)); 
+    //Initiate feed
+    wImages.set(fetch_images(start.get(), 1)); 
     view! {
         <div
             class="flowdiv"
             node_ref=el
             >
-            //Loop through all given images
+            //Loop through all newly requested images
             <For each=move || images.get() key=|i| i.clone() let:image>
                 {match image{
                     //Image
@@ -245,9 +244,8 @@ fn infinite_feed() -> impl IntoView {
                             src={match image{
                                 Element::Image(ref img) => img.src.to_string(),
                                 _ => "".to_string()
-                            } 
+                                } 
                             }
-                            // style=format!("height: {}px; width: {}px;", rand::thread_rng().gen_range(150..550), rand::thread_rng().gen_range(150..550))
                             />
                         </div>
                     },
