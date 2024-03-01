@@ -1521,6 +1521,7 @@ dependencies = [
  "axum",
  "console_error_panic_hook",
  "http 1.0.0",
+ "lazy_static",
  "leptos",
  "leptos-use",
  "leptos_axum",

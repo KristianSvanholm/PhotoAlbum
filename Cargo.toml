@@ -25,6 +25,7 @@ rusqlite = { version = "0.31.0", features = ["bundled"], optional = true }
 uuid = { version = "1.7.0", features = ["v4", "fast-rng"] }
 rand = "0.8"
 leptos-use = "0.10.2"
+lazy_static = "1.4.0"
 
 [features]
 hydrate = ["leptos/hydrate", "leptos_meta/hydrate", "leptos_router/hydrate"]

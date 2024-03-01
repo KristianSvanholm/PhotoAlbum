@@ -6,6 +6,8 @@ extern crate rand;
 use rand::Rng;
 use leptos::html::Div;
 use leptos_use::{UseInfiniteScrollOptions, use_infinite_scroll_with_options};
+extern crate lazy_static;
+use std::sync::Mutex;
 
 
 
@@ -124,20 +126,39 @@ fn HomePage() -> impl IntoView {
     }
 }
 
+//Image data struct
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Image {
     src: String,
     date: String,
 }
 
+//Takes a date string and image struct
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum Element {
     String(String),
     Image(Image),
 }
 
+//Store previous fetched date from previous request to prevent duplicate date titles
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct PreviousDate {
+    month: String,
+    year: String,
+}
+
+//Store last fetched date as global variable
+lazy_static::lazy_static! {
+    static ref PREVIOUS_DATE: Mutex<PreviousDate> = Mutex::new(PreviousDate{
+        month: String::new(),
+        year: String::new(),
+    });
+}
+
+//Images per infinite feed request
 const FETCH_IMAGE_COUNT: usize = 20;
 
+//Fetch a number of images from database (currently random images from the web)
 fn fetch_images(start: usize, count: usize) -> Vec<Element> {
     let mut images = Vec::new();
     //Generate images for infinite feed
@@ -147,10 +168,10 @@ fn fetch_images(start: usize, count: usize) -> Vec<Element> {
             date: 
                 format!(
                     "{}-{:02}-{:02}",
-                    // rand::thread_rng().gen_range(2010..2022),
-                    2021,
+                    rand::thread_rng().gen_range(2010..2023),
+                    // 2023,
                     // rand::thread_rng().gen_range(1..13),
-                    2, 
+                    8, 
                     rand::thread_rng().gen_range(1..29),
                 ),
         };
@@ -161,9 +182,11 @@ fn fetch_images(start: usize, count: usize) -> Vec<Element> {
     //New vector with months and years seperated
     let mut grouped_images: Vec<Element> = Vec::new();
 
-    //Prevent repeats of months and years
-    let mut current_month = String::new();
-    let mut current_year = String::new();
+    //Access previous date requested
+    let mut previous_date = PREVIOUS_DATE.lock().unwrap();
+    let mut current_month = previous_date.month.clone();
+    let mut current_year = previous_date.year.clone();
+    print!(".{}-{}.\n",current_month,current_year);
 
     //Iterates over sorted images and adds years and months
     for image in images {
@@ -180,7 +203,10 @@ fn fetch_images(start: usize, count: usize) -> Vec<Element> {
             current_month = month.to_string();
         }
         grouped_images.push(Element::Image(image));
-    }
+    }     
+    previous_date.month = current_month;
+    previous_date.year = current_year;
+
     grouped_images
 }
 
@@ -203,7 +229,7 @@ fn infinite_feed() -> impl IntoView {
         UseInfiniteScrollOptions::default().distance(250.0),
     );
 
-    wImages.set(fetch_images(start.get(), 1)); //Starting count too high leads to problems??
+    wImages.set(fetch_images(start.get(), 20)); 
     view! {
         <div
             class="flowdiv"
