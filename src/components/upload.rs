@@ -16,8 +16,6 @@ pub async fn upload_media_server(media: MediaPayload) -> Result<(), ServerFnErro
         let _ = fs::create_dir_all("./album")?;
     }
 
-    let conn = crate::components::db::db();
-
     for (filename, bytes) in media.data {
         use uuid::Uuid;
         let file_ext = match extract_ext(filename) {

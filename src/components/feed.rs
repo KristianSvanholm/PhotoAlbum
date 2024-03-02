@@ -1,9 +1,7 @@
 use leptos::*;
-use rand::Rng;
 use leptos::html::Div;
 use leptos_use::{UseInfiniteScrollOptions, use_infinite_scroll_with_options};
-
-
+use rand::Rng;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct Image {

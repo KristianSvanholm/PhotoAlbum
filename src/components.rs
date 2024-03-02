@@ -1,8 +1,6 @@
-
-#[cfg(feature = "ssr")]
-pub mod db;
-
 pub mod feed;
-pub mod testdb;
 pub mod topbar;
 pub mod upload;
+pub mod signup;
+pub mod logout;
+pub mod login;
