@@ -17,3 +17,5 @@ database.db
 
 #Album folder
 album/
+
+.DS_Store
