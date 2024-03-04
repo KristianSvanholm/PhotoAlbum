@@ -62,7 +62,7 @@ async fn main() {
         .expect("couldn't initialize logging");
 
     let pool = SqlitePoolOptions::new()
-        .connect("sqlite:Todos.db")
+        .connect("sqlite:Database.db")
         .await
         .expect("Could not make pool.");
 
