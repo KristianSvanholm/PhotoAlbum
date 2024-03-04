@@ -4,6 +4,7 @@ use leptos_router::*;
 #[server(Signup, "/api")]
 pub async fn signup(
     username: String,
+    email: String,
     password: String,
     password_confirmation: String,
     remember: Option<String>,
@@ -23,8 +24,9 @@ pub async fn signup(
 
     let password_hashed = hash(password, DEFAULT_COST).unwrap();
 
-    sqlx::query("INSERT INTO users (username, password) VALUES (?,?)")
+    sqlx::query("INSERT INTO users (username, email, password) VALUES (?,?,?)")
         .bind(username.clone())
+        .bind(email.clone())
         .bind(password_hashed)
         .execute(&pool)
         .await?;
@@ -58,6 +60,16 @@ pub fn Signup(
                     placeholder="User ID"
                     maxlength="32"
                     name="username"
+                    class="auth-input"
+                />
+            </label>
+            <br/>
+            <label>
+                "Email:"
+                <input
+                    type="text"
+                    placeholder="Email"
+                    name="email"
                     class="auth-input"
                 />
             </label>

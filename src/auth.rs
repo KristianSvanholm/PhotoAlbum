@@ -6,6 +6,7 @@ use std::collections::HashSet;
 pub struct User {
     pub id: i64,
     pub username: String,
+    pub email: String,
     pub password: String,
     pub permissions: HashSet<String>,
 }
@@ -18,6 +19,7 @@ impl Default for User {
             id: -1,
             username: "Guest".into(),
             password: "".into(),
+            email: "".into(),
             permissions,
         }
     }
@@ -130,6 +132,7 @@ pub mod ssr {
     pub struct SqlUser {
         pub id: i64,
         pub username: String,
+        pub email: String,
         pub password: String,
     }
 
@@ -141,6 +144,7 @@ pub mod ssr {
             User {
                 id: self.id,
                 username: self.username,
+                email: self.email,
                 password: self.password,
                 permissions: if let Some(user_perms) = sql_user_perms {
                     user_perms
