@@ -121,7 +121,6 @@ fn HomePage() -> impl IntoView {
     view! {
         <TestDBButton></TestDBButton>
         <h1>"Home"</h1>
-        // <DynamicList initial_length=5 initial_period=1/>
         <InfiniteFeed/>
     }
 }
@@ -209,10 +208,15 @@ fn fetch_images(start: usize, count: usize) -> Vec<Element> {
 
 //Creates an infinite feed of images
 #[component]
-fn infinite_feed() -> impl IntoView {
+pub fn infinite_feed() -> impl IntoView {
     let (images, wImages) = create_signal(Vec::new());
     let (start, wStart) = create_signal(0);
     let el = create_node_ref::<Div>();
+
+    //Change feed display variables
+    let (name, set_name) = create_signal("Smooth feed".to_string());
+    let (feedDisplayClass, set_feedDisplayClass) = create_signal("break date_title".to_string());
+    let (num, set_num) = create_signal(0);
 
     //Creates and loads infinite feed
     let _ = use_infinite_scroll_with_options(
@@ -230,6 +234,18 @@ fn infinite_feed() -> impl IntoView {
     //Initiate feed
     wImages.set(fetch_images(start.get(), 1)); 
     view! {
+        //Change display of feed
+        <button on:click=move |_| {
+            if num.get() == 0 {
+                set_name("Date feed".to_string());
+                set_feedDisplayClass("invis".to_string());
+                set_num(1);
+            } else {
+                set_name("Smooth feed".to_string());
+                set_feedDisplayClass("break date_title".to_string());
+                set_num(0);
+            }
+            }>{name}</button>
         <div
             class="flowdiv"
             node_ref=el
@@ -253,7 +269,7 @@ fn infinite_feed() -> impl IntoView {
                     Element::String(ref date) => {
                         let date_clone = date.clone(); //Allow str to reach all the way in
                         view!{
-                        <div class="break date_title">{
+                        <div class={move || feedDisplayClass.get()}>{
                             match date_clone.parse().unwrap() {
                                 1 => "January".to_string(),
                                 2 => "February".to_string(),
