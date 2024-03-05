@@ -216,6 +216,7 @@ pub fn infinite_feed() -> impl IntoView {
     //Change feed display variables
     let (name, set_name) = create_signal("Smooth feed".to_string());
     let (feedDisplayClass, set_feedDisplayClass) = create_signal("break date_title".to_string());
+    let (imageDisplayClass, set_imageDisplayClass) = create_signal("image".to_string());
     let (num, set_num) = create_signal(0);
 
     //Creates and loads infinite feed
@@ -239,10 +240,12 @@ pub fn infinite_feed() -> impl IntoView {
             if num.get() == 0 {
                 set_name("Date feed".to_string());
                 set_feedDisplayClass("invis".to_string());
+                set_imageDisplayClass("image imageSmooth".to_string());
                 set_num(1);
             } else {
                 set_name("Smooth feed".to_string());
                 set_feedDisplayClass("break date_title".to_string());
+                set_imageDisplayClass("image".to_string());
                 set_num(0);
             }
             }>{name}</button>
@@ -255,7 +258,7 @@ pub fn infinite_feed() -> impl IntoView {
                 {match image{
                     //Image
                     Element::Image(..) => view!{
-                        <div class="image">
+                        <div class={move || imageDisplayClass.get()}>
                             <img 
                             src={match image{
                                 Element::Image(ref img) => img.src.to_string(),
