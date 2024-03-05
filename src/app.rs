@@ -255,19 +255,16 @@ pub fn infinite_feed() -> impl IntoView {
             >
             //Loop through all newly requested images
             <For each=move || images.get() key=|i| i.clone() let:image>
-                {match image{
+                { match image{
                     //Image
-                    Element::Image(..) => view!{
+                    Element::Image(ref img) => {
+                        view!{
                         <div class={move || imageDisplayClass.get()}>
                             <img 
-                            src={match image{
-                                Element::Image(ref img) => img.src.to_string(),
-                                _ => "".to_string()
-                                } 
-                            }
+                            src={img.src.to_string()}
                             />
                         </div>
-                    },
+                    }},
                     //Date
                     Element::String(ref date) => {
                         let date_clone = date.clone(); //Allow str to reach all the way in
