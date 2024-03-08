@@ -30,7 +30,6 @@ pub async fn upload_media_server(media: MediaPayload) -> Result<(), ServerFnErro
         let path = format!("./album/{}.{}", uuid, file_ext);
         let _ = fs::write(&path, bytes)?;
     
-        logging::log!("TEST");
         sqlx::query("INSERT INTO files (id, path, uploadDate, createdDate) VALUES (?, ?, ?, ?)")
             .bind(uuid)
             .bind(path)
@@ -38,7 +37,6 @@ pub async fn upload_media_server(media: MediaPayload) -> Result<(), ServerFnErro
             .bind("fake_timestamp".to_string())
             .execute(&pool)
             .await?;
-    logging::log!("TEST");
 
     }
     Ok(())
