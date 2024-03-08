@@ -44,11 +44,6 @@ pub mod ssr {
 
     use leptos::*;
 
-    pub fn pool() -> Result<SqlitePool, ServerFnError> {
-        use_context::<SqlitePool>()
-            .ok_or_else(|| ServerFnError::ServerError("Pool missing.".into()))
-    }
-
     pub fn auth() -> Result<AuthSession, ServerFnError> {
         use_context::<AuthSession>().ok_or_else(|| {
             ServerFnError::ServerError("Auth session missing.".into())
