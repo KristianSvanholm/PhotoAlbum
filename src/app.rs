@@ -1,4 +1,3 @@
-use crate::auth::*;
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
@@ -9,26 +8,9 @@ use crate::components::{
     //topbar::TopBar
 };
 
-#[cfg(feature = "ssr")]
-pub mod ssr {
-    use crate::auth::{ssr::AuthSession, User};
-    use leptos::*;
-    use sqlx::SqlitePool;
-
-    pub fn pool() -> Result<SqlitePool, ServerFnError> {
-        use_context::<SqlitePool>()
-            .ok_or_else(|| ServerFnError::ServerError("Pool missing.".into()))
-    }
-
-    pub fn auth() -> Result<AuthSession, ServerFnError> {
-        use_context::<AuthSession>().ok_or_else(|| {
-            ServerFnError::ServerError("Auth session missing.".into())
-        })
-    }
-}
-
 #[component]
 pub fn App() -> impl IntoView {
+    use crate::auth::get_user;
 
     let login = create_server_action::<Login>();
     let logout = create_server_action::<Logout>();

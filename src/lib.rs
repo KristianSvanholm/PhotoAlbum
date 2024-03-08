@@ -4,6 +4,7 @@ pub mod error_template;
 pub mod state;
 #[cfg(feature = "ssr")]
 pub mod fileserv;
+pub mod db;
 pub mod app;
 pub mod components;
 

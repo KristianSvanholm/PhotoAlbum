@@ -11,7 +11,7 @@ pub struct MediaPayload {
 pub async fn upload_media_server(media: MediaPayload) -> Result<(), ServerFnError> {
     use std::fs;
     use std::path::Path;
-    use crate::app::ssr::*;
+    use crate::auth::ssr::*;
 
     let pool = pool()?;
 

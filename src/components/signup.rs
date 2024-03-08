@@ -10,8 +10,8 @@ pub async fn signup(
     remember: Option<String>,
 ) -> Result<(), ServerFnError> {
     use bcrypt::{hash, DEFAULT_COST};
-    use crate::app::ssr::*;
-    use crate::auth::User;
+    use crate::db::ssr::*;
+    use crate::auth::{User, ssr::auth};
 
     let pool = pool()?;
     let auth = auth()?;

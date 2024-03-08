@@ -39,9 +39,21 @@ pub mod ssr {
         SessionSqlitePool,
         SqlitePool,
     >;
-    pub use crate::app::ssr::{auth, pool};
     pub use async_trait::async_trait;
     pub use bcrypt::{hash, verify, DEFAULT_COST};
+
+    use leptos::*;
+
+    pub fn pool() -> Result<SqlitePool, ServerFnError> {
+        use_context::<SqlitePool>()
+            .ok_or_else(|| ServerFnError::ServerError("Pool missing.".into()))
+    }
+
+    pub fn auth() -> Result<AuthSession, ServerFnError> {
+        use_context::<AuthSession>().ok_or_else(|| {
+            ServerFnError::ServerError("Auth session missing.".into())
+        })
+    }
 
     impl User {
         pub async fn get(id: i64, pool: &SqlitePool) -> Option<Self> {
@@ -161,7 +173,7 @@ pub mod ssr {
 
 #[server]
 pub async fn get_user() -> Result<Option<User>, ServerFnError> {
-    use crate::app::ssr::auth;
+    use ssr::auth;
 
     let auth = auth()?;
 
