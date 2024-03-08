@@ -11,6 +11,9 @@ pub struct MediaPayload {
 pub async fn upload_media_server(media: MediaPayload) -> Result<(), ServerFnError> {
     use std::fs;
     use std::path::Path;
+    use crate::app::ssr::*;
+
+    let pool = pool()?;
 
     if !Path::new("./album").exists() {
         let _ = fs::create_dir_all("./album")?;
@@ -23,8 +26,20 @@ pub async fn upload_media_server(media: MediaPayload) -> Result<(), ServerFnErro
             None => continue,
         };
 
-        let path = format!("./album/{}.{}", Uuid::new_v4().to_string(), file_ext);
-        let _ = fs::write(path, bytes)?;
+        let uuid = Uuid::new_v4().to_string();
+        let path = format!("./album/{}.{}", uuid, file_ext);
+        let _ = fs::write(&path, bytes)?;
+    
+        logging::log!("TEST");
+        sqlx::query("INSERT INTO files (id, path, uploadDate, createdDate) VALUES (?, ?, ?, ?)")
+            .bind(uuid)
+            .bind(path)
+            .bind("fake_timestamp".to_string())
+            .bind("fake_timestamp".to_string())
+            .execute(&pool)
+            .await?;
+    logging::log!("TEST");
+
     }
     Ok(())
 }
