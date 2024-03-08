@@ -1,125 +1,135 @@
-use crate::error_template::{AppError, ErrorTemplate};
+use crate::auth::*;
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
-extern crate rand; 
-use rand::Rng;
-use leptos::html::Div;
-use leptos_use::{UseInfiniteScrollOptions, use_infinite_scroll_with_options};
 extern crate lazy_static;
 use std::sync::Mutex;
+use crate::components::{
+    login::Login, 
+    logout::Logout, 
+    signup::Signup,
+    //topbar::TopBar
+};
 
+#[cfg(feature = "ssr")]
+pub mod ssr {
+    use crate::auth::{ssr::AuthSession, User};
+    use leptos::*;
+    use sqlx::SqlitePool;
 
+    pub fn pool() -> Result<SqlitePool, ServerFnError> {
+        use_context::<SqlitePool>()
+            .ok_or_else(|| ServerFnError::ServerError("Pool missing.".into()))
+    }
+
+    pub fn auth() -> Result<AuthSession, ServerFnError> {
+        use_context::<AuthSession>().ok_or_else(|| {
+            ServerFnError::ServerError("Auth session missing.".into())
+        })
+    }
+}
 
 #[component]
 pub fn App() -> impl IntoView {
-    // Provides context that manages stylesheets, titles, meta tags, etc.
+
+    let login = create_server_action::<Login>();
+    let logout = create_server_action::<Logout>();
+    let signup = create_server_action::<Signup>();
+
+    let user = create_resource(
+        move || {
+            (
+                login.version().get(),
+                signup.version().get(),
+                logout.version().get(),
+            )
+        },
+        move |_| get_user(),
+    );
     provide_meta_context();
 
     view! {
-
-        // injects a stylesheet into the document <head>
-        // id=leptos means cargo-leptos will hot-reload this stylesheet
+        <Link rel="shortcut icon" type_="image/ico" href="/favicon.ico"/>
         <Stylesheet id="leptos" href="/pkg/photo-album.css"/>
-
-        // sets the document title
-        <Title text="photo-album"/>
-
-        // content for this welcome page
-        <Router fallback=|| {
-            let mut outside_errors = Errors::default();
-            outside_errors.insert_with_default_key(AppError::NotFound);
-            view! {
-                <ErrorTemplate outside_errors/>
-            }
-            .into_view()
-        }>
-            <TopBar/>
+        <Router>
             <main>
+                
+                //###############
+
+                <nav>
+                    <a href="/">"Family Album"</a> // TODO Set to Admin defined name
+                    <a href="upload">"Upload"</a>
+
+                    <Transition fallback=move || {
+                        view! { <span>"Loading..."</span> }
+                    }>
+                        {move || {
+                            user.get()
+                                .map(|user| match user {
+                                    Err(e) => {
+                                        view! {
+                                            <a href="login">"Login"</a>
+                                            <a href="signup">"Signup"</a>
+                                            <span>{format!("Login error: {}", e)}</span>
+                                        }
+                                            .into_view()
+                                    }
+                                    Ok(None) => {
+                                        view! {
+                                            <a href="login">"Login"</a>
+                                            <a href="signup">"Signup"</a>
+                                            <span>"Logged out."</span>
+                                        }
+                                            .into_view()
+                                    }
+                                    Ok(Some(user)) => {
+                                        view! {
+                                            <a href="settings">"Settings"</a>
+                                            <span>
+                                                {format!("Logged in as: {} ({})", user.username, user.id)}
+                                            </span>
+                                        }
+                                            .into_view()
+                                    }
+                                })
+                        }}
+
+                    </Transition>
+
+                </nav>
+
+
+                //###############
+
+
                 <Routes>
+                    // Route
                     <Route path="" view=HomePage/>
-                    <Route path="test" view=TestPage/>
-                    <Route path="hello" view=HelloPage/>
+                    <Route path="upload" view=UploadPage/>
+                    <Route path="signup" view=move || view! { <Signup action=signup/> }/>
+                    <Route path="login" view=move || view! { <Login action=login/> }/>
+                    <Route
+                        path="settings"
+                        view=move || {
+                            view! {
+                                <h1>"Settings"</h1>
+                                <Logout action=logout/>
+                            }
+                        }
+                    />
+
                 </Routes>
             </main>
         </Router>
     }
 }
 
-#[derive(
-    Debug, Clone, leptos::server_fn::serde::Serialize, leptos::server_fn::serde::Deserialize,
-)]
-pub struct Folder {
-    id: String,
-    parent_id: Option<String>,
-    name: String,
-}
-
-#[cfg(feature = "ssr")]
-pub mod db;
-
-#[server(TestDB, "/api")]
-pub async fn test_db(name: String) -> Result<Vec<Folder>, ServerFnError> {
-    use uuid::Uuid;
-
-    // Connect to db
-    let conn = crate::app::db::db().await?;
-
-    // Insert & parameters example. Uncomment to add to DB.
-    use rusqlite::params;
-    let _ = conn.execute("INSERT INTO folder (id, name, createdDate) values (?1, ?2, ?3)", 
-        params![Uuid::new_v4().to_string(),name, "now:)"])?;
-
-    let mut stmnt = conn.prepare("SELECT id, parentId, name FROM folder")?;
-
-    let folders = stmnt.query_map([], |row| {
-        Ok(Folder {
-            id: row.get(0)?,
-            parent_id: row.get(1)?,
-            name: row.get(2)?,
-        })
-    })?;
-
-    let mut vec = Vec::new();
-    for folder in folders {
-        vec.push(folder.unwrap());
-    }
-
-    use std::cmp;
-    Ok(vec[cmp::max(vec.len() - cmp::min(vec.len(), 10), 0)..].to_vec())
-}
-
-#[component]
-pub fn TestDBButton() -> impl IntoView {
-    let (name, _set_name) = create_signal("Controlled".to_string());
-    let input_el: NodeRef<html::Input> = create_node_ref();
-
-    let on_submit = move |ev: leptos::ev::SubmitEvent| {
-        ev.prevent_default();
-
-        let value = input_el().expect("<Input> should be mounted").value();
-        spawn_local(async {
-            logging::log!("{:?}", test_db(value).await.unwrap());
-        });
-    };
-
-    view! {
-        <form on:submit=on_submit>
-            <input type="text"
-                value=name
-                node_ref=input_el
-            />
-            <input type="submit" value="Submit"/>
-        </form>
-    }
-}
-
-/// Renders the home page of your application.
+// ===== ONLY ROUTES ======
 #[component]
 fn HomePage() -> impl IntoView {
+    use crate::components::feed::InfiniteFeed;
 
     view! {
-        <TestDBButton></TestDBButton>
         <h1>"Home"</h1>
         <InfiniteFeed/>
     }
@@ -325,30 +335,12 @@ fn TestPage() -> impl IntoView {
 }
 
 #[component]
-fn HelloPage() -> impl IntoView {
-    
-    let (name, set_name) = create_signal("Potato".to_string());
-    
-    view! {
-        <h1>"Hello"</h1>
-        <input type="text"
-        on:input=move |ev| {
-            set_name(event_target_value(&ev));
-        }
-        prop:value=name
-        />
-        <p>"Name is: " {name}</p>
-    }
-}
+fn UploadPage() -> impl IntoView {
 
-#[component]
-fn TopBar() -> impl IntoView {
-    // All routes accessible from navigation bar
+    use crate::components::upload::UploadMedia;
+
     view! {
-        <nav>
-            <a href="/">"Family Album"</a> // TODO Set to Admin defined name
-            <a href="test">"Test"</a>
-            <a href="hello">"Hello"</a>
-        </nav>
+        <h1>Upload</h1>
+        <UploadMedia></UploadMedia>
     }
 }

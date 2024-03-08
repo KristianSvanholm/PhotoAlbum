@@ -1,40 +1,120 @@
-#[cfg(feature = "ssr")]
+use axum::{
+    body::Body as AxumBody,
+    extract::{Path, State},
+    http::Request,
+    response::{IntoResponse, Response},
+    routing::get,
+    Router,
+};
+use axum_session::{SessionConfig, SessionLayer, SessionStore};
+use axum_session_auth::{AuthConfig, AuthSessionLayer, SessionSqlitePool};
+use leptos::{get_configuration, logging::log, provide_context};
+use leptos_axum::{
+    generate_route_list, handle_server_fns_with_context, LeptosRoutes,
+};
+use photo_album::{
+    auth::{ssr::AuthSession, User},
+    state::AppState,
+    app::*,
+};
+use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
+
+async fn server_fn_handler(
+    State(app_state): State<AppState>,
+    auth_session: AuthSession,
+    path: Path<String>,
+    request: Request<AxumBody>,
+) -> impl IntoResponse {
+    log!("{:?}", path);
+
+    handle_server_fns_with_context(
+        move || {
+            provide_context(auth_session.clone());
+            provide_context(app_state.pool.clone());
+        },
+        request,
+    )
+    .await
+}
+
+async fn leptos_routes_handler(
+    auth_session: AuthSession,
+    State(app_state): State<AppState>,
+    req: Request<AxumBody>,
+) -> Response {
+    let handler = leptos_axum::render_route_with_context(
+        app_state.leptos_options.clone(),
+        app_state.routes.clone(),
+        move || {
+            provide_context(auth_session.clone());
+            provide_context(app_state.pool.clone());
+        },
+        App,
+    );
+    handler(req).await.into_response()
+}
+
 #[tokio::main]
 async fn main() {
-    use axum::Router;
-    use leptos::*;
-    use leptos_axum::{generate_route_list, LeptosRoutes};
-    use photo_album::app::*;
     use photo_album::fileserv::file_and_error_handler;
-    let _ = photo_album::app::db::db_init().await;
 
+    simple_logger::init_with_level(log::Level::Info)
+        .expect("couldn't initialize logging");
 
-    // Setting get_configuration(None) means we'll be using cargo-leptos's env values
-    // For deployment these variables are:
-    // <https://github.com/leptos-rs/start-axum#executing-a-server-on-a-remote-machine-without-the-toolchain>
-    // Alternately a file can be specified such as Some("Cargo.toml")
-    // The file would need to be included with the executable when moved to deployment
+    let pool = SqlitePoolOptions::new()
+        .connect("sqlite:database.db")
+        .await
+        .expect("Could not make pool.");
+
+    // Auth section
+    let session_config =
+        SessionConfig::default().with_table_name("axum_sessions");
+    let auth_config = AuthConfig::<i64>::default();
+    let session_store = SessionStore::<SessionSqlitePool>::new(
+        Some(SessionSqlitePool::from(pool.clone())),
+        session_config,
+    )
+    .await
+    .unwrap();
+
+    if let Err(e) = sqlx::migrate!().run(&pool).await {
+        eprintln!("{e:?}");
+    }
+
+    // Setting this to None means we'll be using cargo-leptos and its env vars
     let conf = get_configuration(None).await.unwrap();
     let leptos_options = conf.leptos_options;
     let addr = leptos_options.site_addr;
     let routes = generate_route_list(App);
 
+    let app_state = AppState {
+        leptos_options,
+        pool: pool.clone(),
+        routes: routes.clone(),
+    };
+
     // build our application with a route
     let app = Router::new()
-        .leptos_routes(&leptos_options, routes, App)
+        .route(
+            "/api/*fn_name",
+            get(server_fn_handler).post(server_fn_handler),
+        )
+        .leptos_routes_with_handler(routes, get(leptos_routes_handler))
+        .layer(
+            AuthSessionLayer::<User, i64, SessionSqlitePool, SqlitePool>::new(
+                Some(pool.clone()),
+            )
+            .with_config(auth_config),
+        )
         .fallback(file_and_error_handler)
-        .with_state(leptos_options);
+        .layer(SessionLayer::new(session_store))
+        .with_state(app_state);
 
+    // run our app with hyper
+    // `axum::Server` is a re-export of `hyper::Server`
+    log!("listening on http://{}", &addr);
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-    logging::log!("listening on http://{}", &addr);
     axum::serve(listener, app.into_make_service())
         .await
         .unwrap();
-}
-
-#[cfg(not(feature = "ssr"))]
-pub fn main() {
-    // no client-side main function
-    // unless we want this to work with e.g., Trunk for a purely client-side app
-    // see lib.rs for hydration function instead
 }
