@@ -86,7 +86,7 @@ pub fn App() -> impl IntoView {
                     // Route
                     <Route path="" view=HomePage/>
                     <Route path="upload" view=UploadPage/>
-                    <Route path="signup" view=move || view! { <Signup action=signup/> }/>
+                    <Route path="signup/:invite" view=move || view! { <Signup action=signup/> }/>
                     <Route path="login" view=move || view! { <Login action=login/> }/>
                     <Route
                         path="settings"

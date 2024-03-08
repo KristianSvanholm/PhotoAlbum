@@ -8,6 +8,7 @@ pub async fn signup(
     password: String,
     password_confirmation: String,
     remember: Option<String>,
+    invite: String,
 ) -> Result<(), ServerFnError> {
     use bcrypt::{hash, DEFAULT_COST};
     use crate::db::ssr::*;
@@ -50,6 +51,10 @@ pub async fn signup(
 pub fn Signup(
     action: Action<Signup, Result<(), ServerFnError>>,
 ) -> impl IntoView {
+    // Get invite from URL
+    let params = use_params_map();
+    let invite = params.with(|p| p.get("invite").cloned().unwrap_or_default());
+
     view! {
         <ActionForm action=action>
             <h1>"Sign Up"</h1>
@@ -92,6 +97,9 @@ pub fn Signup(
             <label>
                 "Remember me?" <input type="checkbox" name="remember" class="auth-input"/>
             </label>
+
+            // Add invite string to request as hidden input element
+            <input hidden name="invite" prop:value=invite/>
 
             <br/>
             <button type="submit" class="button">
