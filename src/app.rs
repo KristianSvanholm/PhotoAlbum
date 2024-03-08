@@ -75,6 +75,7 @@ pub fn App() -> impl IntoView {
                         }}
 
                     </Transition>
+                    <a href="admin">"Admin panel"</a>
 
                 </nav>
 
@@ -88,6 +89,7 @@ pub fn App() -> impl IntoView {
                     <Route path="upload" view=UploadPage/>
                     <Route path="signup/:invite" view=move || view! { <Signup action=signup/> }/>
                     <Route path="login" view=move || view! { <Login action=login/> }/>
+                    <Route path="admin" view=AdminPanel/>
                     <Route
                         path="settings"
                         view=move || {
@@ -125,5 +127,16 @@ fn UploadPage() -> impl IntoView {
     view! {
         <h1>Upload</h1>
         <UploadMedia></UploadMedia>
+    }
+}
+
+#[component]
+fn AdminPanel() -> impl IntoView {
+    use crate::components::{invite::InvitePanel/*, create_user:: CreateUser*/};
+
+    view! {
+        <h1>Admin panel</h1>
+        <InvitePanel/>
+        //<CreateUser/>
     }
 }
