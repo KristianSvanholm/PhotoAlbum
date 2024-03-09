@@ -1,8 +1,8 @@
 CREATE TABLE IF NOT EXISTS users (
   id         INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
   username   TEXT NOT NULL UNIQUE,
-  email      TEXT NOT NULL UNIQUE,
-  password   TEXT NOT NULL,
+  email      TEXT NULL,
+  password   TEXT NULL,
   profilePic BLOB NULL,
   admin      BOOLEAN NOT NULL DEFAULT 0,
   internal   BOOLEAN NOT NULL DEFAULT 0,
