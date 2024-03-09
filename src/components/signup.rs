@@ -1,9 +1,16 @@
 use leptos::*;
 use leptos_router::*;
 
+#[cfg(feature = "ssr")]
+#[derive(sqlx::FromRow)]
+struct Invite {
+    user_id: i64,
+    admin: bool,
+    username: String,
+}
+
 #[server(Signup, "/api")]
 pub async fn signup(
-    username: String,
     email: String,
     password: String,
     password_confirmation: String,
@@ -22,18 +29,34 @@ pub async fn signup(
             "Passwords did not match.".to_string(),
         ));
     }
+    
+    let invite = sqlx::query_as::<_, Invite>(
+            "SELECT i.admin, i.user_id, u.username 
+            FROM invites i 
+            INNER JOIN users u on u.id = id 
+            WHERE token = ?"
+        )
+        .bind(invite)
+        .fetch_one(&pool)
+        .await?;
 
     let password_hashed = hash(password, DEFAULT_COST).unwrap();
 
-    sqlx::query("INSERT INTO users (username, email, password) VALUES (?,?,?)")
-        .bind(username.clone())
-        .bind(email.clone())
+    sqlx::query("UPDATE users SET 
+            email = ?,
+            password = ?,
+            admin = ?, 
+            invited = true
+            WHERE id = ?"
+        ).bind(email.clone())
         .bind(password_hashed)
+        .bind(invite.admin)
+        .bind(invite.user_id)
         .execute(&pool)
         .await?;
 
     let user =
-        User::get_from_username(username, &pool)
+        User::get_from_username(invite.username, &pool)
             .await
             .ok_or_else(|| {
                 ServerFnError::new("Signup failed: User does not exist.")
@@ -58,16 +81,6 @@ pub fn Signup(
     view! {
         <ActionForm action=action>
             <h1>"Sign Up"</h1>
-            <label>
-                "User ID:"
-                <input
-                    type="text"
-                    placeholder="User ID"
-                    maxlength="32"
-                    name="username"
-                    class="auth-input"
-                />
-            </label>
             <br/>
             <label>
                 "Email:"
