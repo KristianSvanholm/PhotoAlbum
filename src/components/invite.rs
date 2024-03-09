@@ -1,5 +1,6 @@
 use leptos::*;
 use serde::{Deserialize, Serialize};
+use leptos::html::Input;
 
 #[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -11,12 +12,12 @@ pub struct UserInfo {
 }
 
 #[server(AllUninvited, "/api")]
-pub async fn get_all_uninvited() -> Result<Vec<UserInfo>, ServerFnError> {
+pub async fn get_all_users() -> Result<Vec<UserInfo>, ServerFnError> {
 
     use crate::db::ssr::pool;
     let pool = pool()?;
     let users =sqlx::query_as::<_, UserInfo>(
-            "SELECT id, username, email, invited FROM users WHERE invited=false"
+            "SELECT id, username, email, invited FROM users"
         ).fetch_all(&pool)
         .await?;
 
@@ -31,6 +32,8 @@ pub async fn invite(id: i64) -> Result<String, ServerFnError> {
     use crate::db::ssr::pool;
     use uuid::Uuid;
 
+    // TODO:: Add admin auth requirement here.
+
     let pool = pool()?;
 
     // This will fail if no such user exists and exit the request.
@@ -40,7 +43,7 @@ pub async fn invite(id: i64) -> Result<String, ServerFnError> {
     
     let invite_token = Uuid::new_v4().to_string();
 
-    sqlx::query("INSERT INTO invites (token, userID, admin) VALUES (?,?,?)")
+    sqlx::query("INSERT INTO invites (token, user_id, admin) VALUES (?,?,?)")
         .bind(invite_token.clone())
         .bind(id)
         .bind(false)
@@ -50,10 +53,32 @@ pub async fn invite(id: i64) -> Result<String, ServerFnError> {
     Ok(invite_token) 
 }
 
+#[server(CreateUser,"/api")]
+pub async fn create_user(username: String) -> Result<(), ServerFnError>{
+    use crate::db::ssr::pool;
+    let pool = pool()?;
+
+    sqlx::query("INSERT INTO users (username, admin) VALUES (?,?)")
+        .bind(username)
+        .bind(false)
+        .execute(&pool)
+        .await?;
+
+    Ok(())
+}
+
 
 #[component]
 pub fn InvitePanel() -> impl IntoView {
-    let users = create_resource(|| (), |_| async { get_all_uninvited().await });
+    let users = create_resource(|| (), |_| async { get_all_users().await });
+
+    let new_user_input = create_node_ref::<Input>();
+    
+    let create_user = move |_| { spawn_local(async move {
+        let node = new_user_input.get_untracked().expect("create user should be loaded by now.");
+        create_user(node.value()).await.unwrap();
+        })
+    };
 
     view! {
         <Suspense fallback=move || view! {<p>"Loading users"</p>}>
@@ -75,12 +100,19 @@ pub fn InvitePanel() -> impl IntoView {
                                             </Show>})
                                         .collect_view()}
                                 </ul>
+                                <input 
+                                    type="text"
+                                    placeholder="New users name"
+                                    name="username"
+                                    class="auth-input"
+                                    _ref=new_user_input
+                                />
+                                <button on:click=create_user>"Create new user"</button>
                             }               
-                       }) 
+                        }) 
                     })
-
-                    }
                 }
+            }
             </ErrorBoundary>
         </Suspense>
     }
