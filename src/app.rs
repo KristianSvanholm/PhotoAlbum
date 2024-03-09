@@ -132,11 +132,11 @@ fn UploadPage() -> impl IntoView {
 
 #[component]
 fn AdminPanel() -> impl IntoView {
-    use crate::components::{invite::InvitePanel/*, create_user:: CreateUser*/};
+    // todo:: Probably rename to User Manager or something
+    use crate::components::invite::InvitePanel;
 
     view! {
         <h1>Admin panel</h1>
         <InvitePanel/>
-        //<CreateUser/>
     }
 }
