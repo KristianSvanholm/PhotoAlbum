@@ -1,11 +1,11 @@
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
-use crate::components::{
+use crate::{auth::User, components::{
     login::Login, 
     logout::Logout, 
     signup::Signup,
-};
+}};
 
 #[cfg(feature = "ssr")]
 pub mod ssr {
@@ -33,7 +33,7 @@ pub fn App() -> impl IntoView {
     let logout = create_server_action::<Logout>();
     let signup = create_server_action::<Signup>();
 
-    let user = create_resource(
+    let user = create_local_resource(
         move || {
             (
                 login.version().get(),
@@ -64,11 +64,7 @@ pub fn App() -> impl IntoView {
                                         .into_view()
                                 }
                                 Ok(None) => {
-                                    view! {
-                                        <a href="/">"Home"</a>
-                                        <a href="login">"Login"</a>
-                                        <span>"Logged out."</span>
-                                    }
+                                    view! {}
                                         .into_view()
                                 }
                                 Ok(Some(user)) => {
@@ -97,23 +93,35 @@ pub fn App() -> impl IntoView {
                                 Ok(None) => false,
                                 _ => false,
                             }).unwrap_or(false)} 
-                            fallback=|| view! { <p>"Bitch there is no user"</p> }>
+                            fallback= move || view! { <Login action=login/> }>
                             <Outlet/>
                         </Show>
                     }
                 }>
                     <Route path="/" view=HomePage/>
+                    <Route path="/settings" view=move || {
+                        view! {
+                            <Logout action=logout/>
+                        }
+                    }/>
+                    <Route path="/upload" view=UploadPage/>
                 </Route>
-                <Route path="/login" view=move || {
+
+                <Route path="/signup" view=move || {
                     view! {
-                        <Login action=login.clone()/>
+                        <Show 
+                            when=move || {user.get().map(|user| match user {
+                                Ok(Some(_)) => false,
+                                Ok(None) => true,
+                                _ => true,
+                            }).unwrap_or(true)} 
+                            fallback= move || view! { <HomePage/> }>
+                            <Outlet/>
+                        </Show>
                     }
-                }/>
-                <Route path="/settings" view=move || {
-                    view! {
-                        <Logout action=logout.clone()/>
-                    }
-                }/>
+                }>
+                    <Route path=":invite" view=move || view! { <Signup action=signup/> }/>
+                </Route>
             </Routes>
             </main>
         </Router>
@@ -129,7 +137,6 @@ fn HomePage() -> impl IntoView {
         <h1>"Home"</h1>
         // <DynamicList initial_length=5 initial_period=1/>
         <InfiniteFeed/>
-        <Outlet/>
     }
 }
 
@@ -141,5 +148,12 @@ fn UploadPage() -> impl IntoView {
     view! {
         <h1>Upload</h1>
         <UploadMedia></UploadMedia>
+    }
+}
+
+#[component]
+fn SettingsPage() -> impl IntoView {
+    view! {
+        <h1>"Settings"</h1>
     }
 }
