@@ -7,8 +7,8 @@ pub async fn login(
     password: String,
     remember: Option<String>,
 ) -> Result<(), ServerFnError> {
-    use crate::auth::User;
-    use crate::app::ssr::*;
+    use crate::auth::{User, ssr::auth};
+    use crate::db::ssr::pool;
     use bcrypt::verify;
 
     let pool = pool()?;

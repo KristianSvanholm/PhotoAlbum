@@ -1,4 +1,3 @@
-use crate::auth::*;
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
@@ -9,26 +8,9 @@ use crate::components::{
     //topbar::TopBar
 };
 
-#[cfg(feature = "ssr")]
-pub mod ssr {
-    use crate::auth::{ssr::AuthSession, User};
-    use leptos::*;
-    use sqlx::SqlitePool;
-
-    pub fn pool() -> Result<SqlitePool, ServerFnError> {
-        use_context::<SqlitePool>()
-            .ok_or_else(|| ServerFnError::ServerError("Pool missing.".into()))
-    }
-
-    pub fn auth() -> Result<AuthSession, ServerFnError> {
-        use_context::<AuthSession>().ok_or_else(|| {
-            ServerFnError::ServerError("Auth session missing.".into())
-        })
-    }
-}
-
 #[component]
 pub fn App() -> impl IntoView {
+    use crate::auth::get_user;
 
     let login = create_server_action::<Login>();
     let logout = create_server_action::<Logout>();
@@ -93,6 +75,7 @@ pub fn App() -> impl IntoView {
                         }}
 
                     </Transition>
+                    <a href="admin">"Admin panel"</a>
 
                 </nav>
 
@@ -104,8 +87,9 @@ pub fn App() -> impl IntoView {
                     // Route
                     <Route path="" view=HomePage/>
                     <Route path="upload" view=UploadPage/>
-                    <Route path="signup" view=move || view! { <Signup action=signup/> }/>
+                    <Route path="signup/:invite" view=move || view! { <Signup action=signup/> }/>
                     <Route path="login" view=move || view! { <Login action=login/> }/>
+                    <Route path="admin" view=AdminPanel/>
                     <Route
                         path="settings"
                         view=move || {
@@ -143,5 +127,16 @@ fn UploadPage() -> impl IntoView {
     view! {
         <h1>Upload</h1>
         <UploadMedia></UploadMedia>
+    }
+}
+
+#[component]
+fn AdminPanel() -> impl IntoView {
+    // todo:: Probably rename to User Manager or something
+    use crate::components::invite::InvitePanel;
+
+    view! {
+        <h1>Admin panel</h1>
+        <InvitePanel/>
     }
 }
