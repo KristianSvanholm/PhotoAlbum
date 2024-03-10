@@ -99,7 +99,7 @@ pub fn App() -> impl IntoView {
                             }
                         }
                     />
-
+                    <Route path="*any" view=move || view! { <h1>"Not Found"</h1> }/>
                 </Routes>
             </main>
         </Router>
