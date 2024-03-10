@@ -1,11 +1,11 @@
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
-use crate::{auth::User, components::{
+use crate::components::{
     login::Login, 
     logout::Logout, 
     signup::Signup,
-}};
+};
 
 #[cfg(feature = "ssr")]
 pub mod ssr {
@@ -91,7 +91,7 @@ pub fn App() -> impl IntoView {
                             when=move || {user.get().map(|user| match user {
                                 Ok(Some(_)) => true,
                                 Ok(None) => false,
-                                _ => false,
+                                Err(_) => false,
                             }).unwrap_or(false)} 
                             fallback= move || view! { <Login action=login/> }>
                             <Outlet/>
@@ -106,22 +106,23 @@ pub fn App() -> impl IntoView {
                     }/>
                     <Route path="/upload" view=UploadPage/>
                 </Route>
-
+    
                 <Route path="/signup" view=move || {
                     view! {
                         <Show 
                             when=move || {user.get().map(|user| match user {
                                 Ok(Some(_)) => false,
                                 Ok(None) => true,
-                                _ => true,
-                            }).unwrap_or(true)} 
-                            fallback= move || view! { <HomePage/> }>
+                                Err(_) => true,
+                            }).unwrap_or(true)}>
                             <Outlet/>
                         </Show>
                     }
                 }>
                     <Route path=":invite" view=move || view! { <Signup action=signup/> }/>
                 </Route>
+        
+
             </Routes>
             </main>
         </Router>
@@ -148,12 +149,5 @@ fn UploadPage() -> impl IntoView {
     view! {
         <h1>Upload</h1>
         <UploadMedia></UploadMedia>
-    }
-}
-
-#[component]
-fn SettingsPage() -> impl IntoView {
-    view! {
-        <h1>"Settings"</h1>
     }
 }
