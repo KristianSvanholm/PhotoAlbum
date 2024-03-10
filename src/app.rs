@@ -130,6 +130,7 @@ pub fn App() -> impl IntoView {
 }
 
 // ===== ONLY ROUTES ======
+// ===== ONLY ROUTES ======
 #[component]
 fn HomePage() -> impl IntoView {
     use crate::components::feed::InfiniteFeed;
@@ -138,6 +139,7 @@ fn HomePage() -> impl IntoView {
         <h1>"Home"</h1>
         // <DynamicList initial_length=5 initial_period=1/>
         <InfiniteFeed/>
+
     }
 }
 

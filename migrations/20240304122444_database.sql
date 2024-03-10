@@ -15,35 +15,35 @@ CREATE TABLE IF NOT EXISTS user_permissions (
     token    TEXT NOT NULL
 );
 
-create table IF NOT EXISTS folder(
+create table IF NOT EXISTS folders(
     id uuid primary key not null,
     parentId uuid references folder(id) null,
     name text not null,
     createdDate timestamp not null
 );
 
-create table IF NOT EXISTS file(
+create table IF NOT EXISTS files(
     id uuid primary key not null,
-    folderId integer references folder(id) not null,
+    folderId integer references folders(id) null,
     path text not null,
     location POINT_2D null,
-    uploadedBy INTEGER references user(id) null,
+    uploadedBy INTEGER references users(id) null,
     uploadDate timestamp not null,
     createdDate timestamp not null
 );
 
 create table IF NOT EXISTS userFile(
-    userID INTEGER references user(id) not null,
-    fileID uuid references file(id) not null,
+    userID INTEGER references users(id) not null,
+    fileID uuid references files(id) not null,
     primary key(userID, fileID)
 );
 
-create table IF NOT EXISTS tag (
+create table IF NOT EXISTS tags (
     tagString text primary key not null
 );
 
 create table IF NOT EXISTS tagFile (
-    tagString text references tag(tagString) not null,
-    fileID uuid references file(id) not null,
+    tagString text references tags(tagString) not null,
+    fileID uuid references files(id) not null,
     primary key(tagString, fileID)
 );
