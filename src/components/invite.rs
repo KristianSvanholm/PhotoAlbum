@@ -1,6 +1,9 @@
 use leptos::*;
 use serde::{Deserialize, Serialize};
 use leptos::html::Input;
+#[cfg(feature = "ssr")]
+use sqlx::SqlitePool;
+use crate::auth::get_user;
 
 #[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -30,27 +33,48 @@ pub async fn invite(id: i64) -> Result<String, ServerFnError> {
     
     use crate::auth::ssr::SqlUser;
     use crate::db::ssr::pool;
-    use uuid::Uuid;
 
     // TODO:: Add admin auth requirement here.
 
     let pool = pool()?;
 
+    //TODO allow only one link per user at a time. 
     // This will fail if no such user exists and exit the request.
     let _user = sqlx::query_as::<_, SqlUser>(
             "SELECT * FROM users WHERE signed_up=false and id = ?"
-        ).bind(id).fetch_one(&pool).await?;
-    
+        ).bind(id).fetch_one(&pool).await?;    
+
+    // Get the current user
+    //This will fail if the user is not logged in.
+    let admin = get_user().await?
+        .ok_or_else(|| ServerFnError::new("You are not logged in."))?;
+    println!("{}",admin.id);
+
+    let link = create_invitation_link(&id, &admin.id, &pool).await?;
+
+    Ok(link) 
+}
+
+#[cfg(feature = "ssr")]
+pub async fn create_invitation_link(
+    user_id: &i64,
+    admin_id: &i64,
+    pool:&SqlitePool
+)-> Result<String, ServerFnError>{
+
+    use uuid::Uuid;
     let invite_token = Uuid::new_v4().to_string();
 
     sqlx::query("INSERT INTO invites (token, user_id, admin_id) VALUES (?,?,?)")
         .bind(invite_token.clone())
-        .bind(id)
-        .bind(1)
-        .execute(&pool)
+        .bind(user_id)
+        .bind(admin_id)
+        .execute(pool)
         .await?;
 
-    Ok(invite_token) 
+    let link = "/signup/".to_string()+&invite_token;
+    
+    Ok(link) 
 }
 
 #[server(CreateUser,"/api")]

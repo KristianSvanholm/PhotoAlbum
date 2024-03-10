@@ -57,33 +57,40 @@ async fn leptos_routes_handler(
 #[cfg(feature = "ssr")]
 async fn add_first_user(
     username: String,
-    email: String,
-    password: String, 
     pool: &SqlitePool
 ){
-    use bcrypt::{hash, DEFAULT_COST};
-
     #[derive(sqlx::FromRow)]
     struct Res{
         IsEmpty: bool 
     }
-    
+
     let users_is_empty = sqlx::query_as::<_,Res>("SELECT CASE WHEN EXISTS(SELECT 1 FROM users) THEN 0 ELSE 1 END AS IsEmpty;")
         .fetch_one(pool)
         .await
         .expect("Database call failed");
 
+    println!("Is empty = {}",users_is_empty.IsEmpty);
+
     if users_is_empty.IsEmpty{
-        let password_hashed = hash(&password, DEFAULT_COST).unwrap();
-        sqlx::query("INSERT INTO users (username, email, password, admin) VALUES (?,?,?, 1)")
+        sqlx::query("INSERT INTO users (username, admin) VALUES (?, 1)")
             .bind(&username)
-            .bind(&email)
-            .bind(&password_hashed)
             .execute(pool)
             .await
-            .expect("Inserting admin in Database failed");
-        
-        println!("Admin with username {name} and password {pass} is added", name = username, pass = password);
+            .expect("Inserting admin in database failed");
+
+        let id = sqlx::query_scalar("SELECT id FROM users ORDER BY rowid DESC limit 1")
+            .fetch_one(pool)
+            .await
+            .expect("Getting id from database failed");
+
+        println!("Admin ID = {}",id);
+
+        let link = photo_album::components::invite::create_invitation_link(&id, &id, &pool)
+            .await
+            .expect("Getting invite_link failed");
+
+        println!("Admin with username {name} was added", name = username);
+        println!("Sign_up now using the following link: {link}", link = link);
     }else{
         println!("Database is not empty, no addional admins are inserted.");
     }
@@ -123,7 +130,7 @@ async fn main() {
     }
     
     //initalize first admin onfirst run
-    add_first_user("username".to_string(), "email".to_string(), "password".to_string(), &pool).await;
+    add_first_user("admin".to_string(), &pool).await;
 
     // Setting this to None means we'll be using cargo-leptos and its env vars
     let conf = get_configuration(None).await.unwrap();
