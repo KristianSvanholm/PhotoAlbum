@@ -14,8 +14,8 @@ pub struct UserInfo {
     pub signed_up: bool,
 }
 
-#[server(GetAllUninvited, "/api")]
-pub async fn get_all_uninvited() -> Result<Vec<UserInfo>, ServerFnError> {
+#[server(GetUserList, "/api")]
+pub async fn get_user_list() -> Result<Vec<UserInfo>, ServerFnError> {
 
     use crate::db::ssr::pool;
     let pool = pool()?;
@@ -109,7 +109,7 @@ pub async fn make_user_admin(id: i64) -> Result<(), ServerFnError>{
 
 #[component]
 pub fn InvitePanel() -> impl IntoView {
-    let users = create_resource(|| (), |_| async { get_all_uninvited().await });
+    let users = create_resource(|| (), |_| async { get_user_list().await });
 
     let new_user_input = create_node_ref::<Input>();
     
