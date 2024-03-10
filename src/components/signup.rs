@@ -5,7 +5,6 @@ use leptos_router::*;
 #[derive(sqlx::FromRow)]
 struct Invite {
     user_id: i64,
-    admin: bool,
     username: String,
 }
 
@@ -17,6 +16,8 @@ pub async fn signup(
     remember: Option<String>,
     invite: String,
 ) -> Result<(), ServerFnError> {
+    //TODO check if invitation is expired
+
     use bcrypt::{hash, DEFAULT_COST};
     use crate::db::ssr::*;
     use crate::auth::{User, ssr::auth};
@@ -31,7 +32,7 @@ pub async fn signup(
     }
     
     let invite = sqlx::query_as::<_, Invite>(
-            "SELECT i.admin, i.user_id, u.username 
+            "SELECT i.user_id, u.username 
             FROM invites i 
             INNER JOIN users u on u.id = id 
             WHERE token = ?"
@@ -45,12 +46,10 @@ pub async fn signup(
     sqlx::query("UPDATE users SET 
             email = ?,
             password = ?,
-            admin = ?, 
             invited = true
             WHERE id = ?"
         ).bind(email.clone())
         .bind(password_hashed)
-        .bind(invite.admin)
         .bind(invite.user_id)
         .execute(&pool)
         .await?;

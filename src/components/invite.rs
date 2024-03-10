@@ -43,10 +43,10 @@ pub async fn invite(id: i64) -> Result<String, ServerFnError> {
     
     let invite_token = Uuid::new_v4().to_string();
 
-    sqlx::query("INSERT INTO invites (token, user_id, admin) VALUES (?,?,?)")
+    sqlx::query("INSERT INTO invites (token, user_id, admin_id) VALUES (?,?,?)")
         .bind(invite_token.clone())
         .bind(id)
-        .bind(false)
+        .bind(1)
         .execute(&pool)
         .await?;
 
@@ -58,9 +58,25 @@ pub async fn create_user(username: String) -> Result<(), ServerFnError>{
     use crate::db::ssr::pool;
     let pool = pool()?;
 
-    sqlx::query("INSERT INTO users (username, admin) VALUES (?,?)")
+    sqlx::query("INSERT INTO users (username) VALUES (?)")
         .bind(username)
-        .bind(false)
+        .execute(&pool)
+        .await?;
+
+    Ok(())
+}
+
+#[server(MakeUserAdmin,"/api")]
+pub async fn make_user_admin(id: i64) -> Result<(), ServerFnError>{
+    // TODO:: Add admin auth requirement here.
+
+    use crate::db::ssr::pool;
+    let pool = pool()?;
+
+    sqlx::query("UPDATE users SET
+            admin = true
+            WHERE id = ?"
+        ).bind(id)
         .execute(&pool)
         .await?;
 
