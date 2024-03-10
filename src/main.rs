@@ -54,6 +54,41 @@ async fn leptos_routes_handler(
     handler(req).await.into_response()
 }
 
+#[cfg(feature = "ssr")]
+async fn add_first_user(
+    username: String,
+    email: String,
+    password: String, 
+    pool: &SqlitePool
+){
+    use bcrypt::{hash, DEFAULT_COST};
+
+    #[derive(sqlx::FromRow)]
+    struct Res{
+        IsEmpty: bool 
+    }
+    
+    let users_is_empty = sqlx::query_as::<_,Res>("SELECT CASE WHEN EXISTS(SELECT 1 FROM users) THEN 0 ELSE 1 END AS IsEmpty;")
+        .fetch_one(pool)
+        .await
+        .expect("Database call failed");
+
+    if users_is_empty.IsEmpty{
+        let password_hashed = hash(&password, DEFAULT_COST).unwrap();
+        sqlx::query("INSERT INTO users (username, email, password, admin, internal) VALUES (?,?,?, 1, 1)")
+            .bind(&username)
+            .bind(&email)
+            .bind(&password_hashed)
+            .execute(pool)
+            .await
+            .expect("Inserting admin in Database failed");
+        
+        println!("Admin with username {name} and password {pass} is added", name = username, pass = password);
+    }else{
+        println!("Database is not empty, no addional admins are inserted.");
+    }
+}
+
 #[tokio::main]
 async fn main() {
     use photo_album::fileserv::file_and_error_handler;
@@ -86,6 +121,9 @@ async fn main() {
     if let Err(e) = sqlx::migrate!().run(&pool).await {
         eprintln!("{e:?}");
     }
+    
+    //initalize first admin onfirst run
+    add_first_user("username".to_string(), "email".to_string(), "password".to_string(), &pool).await;
 
     // Setting this to None means we'll be using cargo-leptos and its env vars
     let conf = get_configuration(None).await.unwrap();
