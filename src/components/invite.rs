@@ -8,7 +8,7 @@ pub struct UserInfo {
     pub id: i64,
     pub username: String,
     pub email: String,
-    pub invited: bool,
+    pub signed_up: bool,
 }
 
 #[server(AllUninvited, "/api")]
@@ -17,7 +17,7 @@ pub async fn get_all_users() -> Result<Vec<UserInfo>, ServerFnError> {
     use crate::db::ssr::pool;
     let pool = pool()?;
     let users =sqlx::query_as::<_, UserInfo>(
-            "SELECT id, username, email, invited FROM users"
+            "SELECT id, username, email, signed_up FROM users"
         ).fetch_all(&pool)
         .await?;
 
@@ -38,7 +38,7 @@ pub async fn invite(id: i64) -> Result<String, ServerFnError> {
 
     // This will fail if no such user exists and exit the request.
     let _user = sqlx::query_as::<_, SqlUser>(
-            "SELECT * FROM users WHERE invited=false and id = ?"
+            "SELECT * FROM users WHERE signed_up=false and id = ?"
         ).bind(id).fetch_one(&pool).await?;
     
     let invite_token = Uuid::new_v4().to_string();
@@ -107,7 +107,7 @@ pub fn InvitePanel() -> impl IntoView {
                                     {y.into_iter()
                                         .map(|user| view! {
                                             <li>{user.username}</li>
-                                            <Show when=move || !user.invited>
+                                            <Show when=move || !user.signed_up>
                                                 <button on:click=move |_|{
                                                     spawn_local(async move {
                                                         let token = invite(user.id).await.unwrap(); 

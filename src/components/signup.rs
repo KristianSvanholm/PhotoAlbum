@@ -46,7 +46,7 @@ pub async fn signup(
     sqlx::query("UPDATE users SET 
             email = ?,
             password = ?,
-            invited = true
+            signed_up = true
             WHERE id = ?"
         ).bind(email.clone())
         .bind(password_hashed)

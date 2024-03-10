@@ -75,7 +75,7 @@ async fn add_first_user(
 
     if users_is_empty.IsEmpty{
         let password_hashed = hash(&password, DEFAULT_COST).unwrap();
-        sqlx::query("INSERT INTO users (username, email, password, admin, internal) VALUES (?,?,?, 1, 1)")
+        sqlx::query("INSERT INTO users (username, email, password, admin) VALUES (?,?,?, 1)")
             .bind(&username)
             .bind(&email)
             .bind(&password_hashed)
@@ -117,7 +117,7 @@ async fn main() {
     )
     .await
     .unwrap();
-
+ 
     if let Err(e) = sqlx::migrate!().run(&pool).await {
         eprintln!("{e:?}");
     }
@@ -143,6 +143,7 @@ async fn main() {
             "/api/*fn_name",
             get(server_fn_handler).post(server_fn_handler),
         )
+        .route("/pkg/*path", get(file_and_error_handler))
         .leptos_routes_with_handler(routes, get(leptos_routes_handler))
         .layer(
             AuthSessionLayer::<User, i64, SessionSqlitePool, SqlitePool>::new(

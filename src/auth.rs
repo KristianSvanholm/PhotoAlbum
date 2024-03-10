@@ -141,7 +141,7 @@ pub mod ssr {
         pub username: String,
         pub email: String,
         pub password: String,
-        pub invited: bool,
+        pub signed_up: bool,
     }
 
     impl SqlUser {
