@@ -1,4 +1,3 @@
-use crate::auth::*;
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
@@ -6,12 +5,11 @@ use crate::components::{
     login::Login, 
     logout::Logout, 
     signup::Signup,
-    //topbar::TopBar
 };
 
 #[cfg(feature = "ssr")]
 pub mod ssr {
-    use crate::auth::{ssr::AuthSession, User};
+    use crate::auth::ssr::AuthSession;
     use leptos::*;
     use sqlx::SqlitePool;
 
@@ -29,6 +27,7 @@ pub mod ssr {
 
 #[component]
 pub fn App() -> impl IntoView {
+    use crate::auth::get_user;
 
     let login = create_server_action::<Login>();
     let logout = create_server_action::<Logout>();
@@ -44,68 +43,78 @@ pub fn App() -> impl IntoView {
         },
         move |_| get_user(),
     );
+
     provide_meta_context();
 
     view! {
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.ico"/>
         <Stylesheet id="leptos" href="/pkg/photo-album.css"/>
         <Router>
-            //<Transition></Transition>
+            <nav>
+                <Transition fallback=move || {
+                    view! { <span>"Loading..."</span> }
+                }>
+                    {move || {
+                        user.get()
+                            .map(|user| match user {
+                                Err(e) => {
+                                    view! {
+                                        <span>{format!("Login error: {}", e)}</span>
+                                    }
+                                        .into_view()
+                                }
+                                Ok(None) => {
+                                    view! {
+                                        <a href="/">"Home"</a>
+                                        <a href="login">"Login"</a>
+                                        <span>"Logged out."</span>
+                                    }
+                                        .into_view()
+                                }
+                                Ok(Some(user)) => {
+                                    view! {
+                                        <a href="/">"Home"</a>
+                                        <a href="/upload">"Upload"</a>
+                                        <a href="/settings">"Settings"</a>
+                                        <span>
+                                            {format!("Logged in as: {} ({})", user.username, user.id)}
+                                        </span>
+                                    }
+                                        .into_view()
+                                }
+                            })
+                    }}
+                </Transition>
+            </nav>
             <main>
-                
-                //###############
-
-                <nav>
-                    <a href="home">"Family Album"</a> // TODO Set to Admin defined name
-                    <a href="upload">"Upload"</a>
-                    <a href="settings"> "Settings"</a>
-
-                    <Transition fallback=move || {
-                        view! { <span>"Loading..."</span> }
-                    }>
-                        {move || {
-                            user.get()
-                                .map(|user| match user {
-                                    Err(e) => {
-                                        view! { <span>{format!("Login error: {}", e)}</span> }.into_view()
-                                    }
-                                    Ok(None) => {
-                                        view! { <span>"Logged out."</span> }.into_view()
-                                    }
-                                    Ok(Some(user)) => {
-                                        view! { <span> {format!("Logged in as: {} ({})", user.username, user.id)} </span> }.into_view()
-                                    }
-                                })
-                        }}
-
-                    </Transition>
-                </nav>
-                //<Transition>/* logged in as ... */</Transition>
-                    //<Routes>
-                        //<Route path="" view=move || match user.get() { Some(_) => view! {<Homepage/>}.into_view(), None => view! { <Login action=login/> }.into_view() }>
-                        //<Route path="" view=HomePage />
-                        //<Route path="upload" view=UploadPage />
-                        /* other logged-in-only routes */
-                        //<ProtectedRoute path="invite/:token" redirect_path="/" condition=move || user.get().is_none() view=move || view! { <Signup action=signup /> } />
-                    //</Routes>
-
-                //###############
-                <Routes>
-                    //<Route path="/" view=move || user.get().map(|user| match user { Ok(Some(_)) => view! {<Outlet/>}.into_view(), _ => view! { <Login action=login/> }.into_view() })>
-                    <Route path="/" view=|| view! {
-                        <Show when=|| !user.get().is_none() fallback=|| view! { <p>"Loading..."</p>}>
-                            {
-                                view! {<Outlet/>}
-                            }
+            // All routes are defined here
+            <Routes>
+                <Route path="/" view=move || {
+                    view! {
+                        <Show 
+                            when=move || {user.get().map(|user| match user {
+                                Ok(Some(_)) => true,
+                                Ok(None) => false,
+                                _ => false,
+                            }).unwrap_or(false)} 
+                            fallback=|| view! { <p>"Bitch there is no user"</p> }>
+                            <Outlet/>
                         </Show>
-                    }>
-                        <Route path="/home" view=HomePage />
-                        <Route path="upload" view=UploadPage />
-                        <Route path="settings" view=move || view! {<Logout action=logout/>}/>
-                        /* other logged-in-only routes */
-                    </Route>
-                    <ProtectedRoute ssr=SsrMode::Async path="invite/:token" redirect_path="/" condition=move || user.get().is_none() view=move || view! { <Signup action=signup /> } />
-                </Routes>
+                    }
+                }>
+                    <Route path="/" view=HomePage/>
+                </Route>
+                <Route path="/login" view=move || {
+                    view! {
+                        <Login action=login.clone()/>
+                    }
+                }/>
+                <Route path="/settings" view=move || {
+                    view! {
+                        <Logout action=logout.clone()/>
+                    }
+                }/>
+            </Routes>
             </main>
         </Router>
     }
@@ -120,7 +129,7 @@ fn HomePage() -> impl IntoView {
         <h1>"Home"</h1>
         // <DynamicList initial_length=5 initial_period=1/>
         <InfiniteFeed/>
-
+        <Outlet/>
     }
 }
 
