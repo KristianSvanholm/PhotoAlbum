@@ -59,7 +59,7 @@ async fn add_first_user(
     username: String,
     pool: &SqlitePool
 ){
-    let users_is_empty = sqlx::query_scalar("SELECT CASE WHEN EXISTS(SELECT 1 FROM users) THEN 0 ELSE 1 END AS IsEmpty;")
+    let users_is_empty:bool = sqlx::query_scalar("SELECT CASE WHEN EXISTS(SELECT 1 FROM users) THEN 0 ELSE 1 END AS IsEmpty;")
         .fetch_one(pool)
         .await
         .expect("Database call failed");
