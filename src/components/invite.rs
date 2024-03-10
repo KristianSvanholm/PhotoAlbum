@@ -38,17 +38,16 @@ pub async fn invite(id: i64) -> Result<String, ServerFnError> {
 
     let pool = pool()?;
 
-    //TODO allow only one link per user at a time. 
+    // TODO: allow only one link per user at a time. 
     // This will fail if no such user exists and exit the request.
     let _user = sqlx::query_as::<_, SqlUser>(
             "SELECT * FROM users WHERE signed_up=false and id = ?"
         ).bind(id).fetch_one(&pool).await?;    
 
     // Get the current user
-    //This will fail if the user is not logged in.
+    // This will fail if the user is not logged in.
     let admin = get_user().await?
         .ok_or_else(|| ServerFnError::new("You are not logged in."))?;
-    println!("{}",admin.id);
 
     let link = create_invitation_link(&id, &admin.id, &pool).await?;
 
@@ -135,7 +134,10 @@ pub fn InvitePanel() -> impl IntoView {
                                                 <button on:click=move |_|{
                                                     spawn_local(async move {
                                                         let token = invite(user.id).await.unwrap(); 
+                                                        let origin = window().location().origin().unwrap_or_default();
                                                         logging::log!("{}", token);
+                                                        let url = origin+&token;
+                                                        logging::log!("{}", url);
                                                 })}> "invite" </button>
                                             </Show>})
                                         .collect_view()}

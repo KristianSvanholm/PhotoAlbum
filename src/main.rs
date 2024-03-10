@@ -59,19 +59,12 @@ async fn add_first_user(
     username: String,
     pool: &SqlitePool
 ){
-    #[derive(sqlx::FromRow)]
-    struct Res{
-        IsEmpty: bool 
-    }
-
-    let users_is_empty = sqlx::query_as::<_,Res>("SELECT CASE WHEN EXISTS(SELECT 1 FROM users) THEN 0 ELSE 1 END AS IsEmpty;")
+    let users_is_empty = sqlx::query_scalar("SELECT CASE WHEN EXISTS(SELECT 1 FROM users) THEN 0 ELSE 1 END AS IsEmpty;")
         .fetch_one(pool)
         .await
         .expect("Database call failed");
 
-    println!("Is empty = {}",users_is_empty.IsEmpty);
-
-    if users_is_empty.IsEmpty{
+    if users_is_empty{
         sqlx::query("INSERT INTO users (username, admin) VALUES (?, 1)")
             .bind(&username)
             .execute(pool)
@@ -82,8 +75,6 @@ async fn add_first_user(
             .fetch_one(pool)
             .await
             .expect("Getting id from database failed");
-
-        println!("Admin ID = {}",id);
 
         let link = photo_album::components::invite::create_invitation_link(&id, &id, &pool)
             .await
