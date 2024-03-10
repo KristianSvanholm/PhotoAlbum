@@ -31,13 +31,13 @@ pub async fn signup(
         ));
     }
     
-    let invite = sqlx::query_as::<_, Invite>(
+    let invited_user = sqlx::query_as::<_, Invite>(
             "SELECT i.user_id, u.username 
             FROM invites i 
             INNER JOIN users u on u.id = id 
             WHERE token = ?"
         )
-        .bind(invite)
+        .bind(&invite)
         .fetch_one(&pool)
         .await?;
 
@@ -50,12 +50,18 @@ pub async fn signup(
             WHERE id = ?"
         ).bind(email.clone())
         .bind(password_hashed)
-        .bind(invite.user_id)
+        .bind(invited_user.user_id)
         .execute(&pool)
         .await?;
 
+    sqlx::query("DELETE FROM invites 
+        WHERE token = ?"
+    ).bind(&invite)
+    .execute(&pool)
+    .await?;
+
     let user =
-        User::get_from_username(invite.username, &pool)
+        User::get_from_username(invited_user.username, &pool)
             .await
             .ok_or_else(|| {
                 ServerFnError::new("Signup failed: User does not exist.")
