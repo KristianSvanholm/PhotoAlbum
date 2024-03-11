@@ -130,15 +130,7 @@ fn HomePage() -> impl IntoView {
     view! {
         <h1>"Home"</h1>
         <InfiniteFeed/>
-    }
-}
 
-
-#[component]
-fn TestPage() -> impl IntoView {
-
-    view! {
-        <div>test</div>
     }
 }
 

@@ -57,9 +57,15 @@ async fn leptos_routes_handler(
 #[tokio::main]
 async fn main() {
     use photo_album::fileserv::file_and_error_handler;
+    use std::fs::File;
+    use std::path::Path;
 
     simple_logger::init_with_level(log::Level::Info)
         .expect("couldn't initialize logging");
+    
+    if !Path::new("database.db").exists() {
+        let _ = File::create("database.db");
+    }
 
     let pool = SqlitePoolOptions::new()
         .connect("sqlite:database.db")
