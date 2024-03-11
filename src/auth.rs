@@ -6,8 +6,8 @@ use std::collections::HashSet;
 pub struct User {
     pub id: i64,
     pub username: String,
-    pub email: String,
     pub password: String,
+    pub email: String,
     pub permissions: HashSet<String>,
 }
 
@@ -39,9 +39,16 @@ pub mod ssr {
         SessionSqlitePool,
         SqlitePool,
     >;
-    pub use crate::app::ssr::{auth, pool};
     pub use async_trait::async_trait;
     pub use bcrypt::{hash, verify, DEFAULT_COST};
+
+    use leptos::*;
+
+    pub fn auth() -> Result<AuthSession, ServerFnError> {
+        use_context::<AuthSession>().ok_or_else(|| {
+            ServerFnError::ServerError("Auth session missing.".into())
+        })
+    }
 
     impl User {
         pub async fn get(id: i64, pool: &SqlitePool) -> Option<Self> {
@@ -134,6 +141,7 @@ pub mod ssr {
         pub username: String,
         pub email: String,
         pub password: String,
+        pub signed_up: bool,
     }
 
     impl SqlUser {
@@ -144,8 +152,8 @@ pub mod ssr {
             User {
                 id: self.id,
                 username: self.username,
-                email: self.email,
                 password: self.password,
+                email: self.email,
                 permissions: if let Some(user_perms) = sql_user_perms {
                     user_perms
                         .into_iter()
@@ -161,7 +169,7 @@ pub mod ssr {
 
 #[server]
 pub async fn get_user() -> Result<Option<User>, ServerFnError> {
-    use crate::app::ssr::auth;
+    use ssr::auth;
 
     let auth = auth()?;
 

@@ -3,7 +3,7 @@ use leptos_router::*;
 
 #[server(Logout, "/api")]
 pub async fn logout() -> Result<(), ServerFnError> {
-    use crate::app::ssr::*;
+    use crate::auth::ssr::auth;
 
     let auth = auth()?;
 

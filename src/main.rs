@@ -54,6 +54,40 @@ async fn leptos_routes_handler(
     handler(req).await.into_response()
 }
 
+#[cfg(feature = "ssr")]
+async fn add_first_user(
+    username: String,
+    pool: &SqlitePool
+){
+    let users_is_empty:bool = sqlx::query_scalar("SELECT CASE WHEN EXISTS(SELECT 1 FROM users) THEN 0 ELSE 1 END AS IsEmpty;")
+        .fetch_one(pool)
+        .await
+        .expect("Database call failed");
+
+    if !users_is_empty{
+        println!("Database is not empty, no addional admins are inserted.");
+        return
+    }
+
+    sqlx::query("INSERT INTO users (username, admin) VALUES (?, 1)")
+        .bind(&username)
+        .execute(pool)
+        .await
+        .expect("Inserting admin in database failed");
+
+    let id = sqlx::query_scalar("SELECT id FROM users ORDER BY rowid DESC limit 1")
+        .fetch_one(pool)
+        .await
+        .expect("Getting id from database failed");
+
+    let link = photo_album::components::invite::create_invitation_link(&id, &id, &pool)
+        .await
+        .expect("Getting invite_link failed");
+
+    println!("Admin with username {name} was added", name = username);
+    println!("Sign_up now using the following link: {link}", link = link);        
+}
+
 #[tokio::main]
 async fn main() {
     use photo_album::fileserv::file_and_error_handler;
@@ -82,10 +116,13 @@ async fn main() {
     )
     .await
     .unwrap();
-
+ 
     if let Err(e) = sqlx::migrate!().run(&pool).await {
         eprintln!("{e:?}");
     }
+    
+    //initalize first admin onfirst run
+    add_first_user("admin".to_string(), &pool).await;
 
     // Setting this to None means we'll be using cargo-leptos and its env vars
     let conf = get_configuration(None).await.unwrap();
@@ -105,6 +142,7 @@ async fn main() {
             "/api/*fn_name",
             get(server_fn_handler).post(server_fn_handler),
         )
+        .route("/pkg/*path", get(file_and_error_handler))
         .leptos_routes_with_handler(routes, get(leptos_routes_handler))
         .layer(
             AuthSessionLayer::<User, i64, SessionSqlitePool, SqlitePool>::new(
