@@ -11,7 +11,7 @@ use crate::components::{
 
 #[cfg(feature = "ssr")]
 pub mod ssr {
-    use crate::auth::{ssr::AuthSession, User};
+    use crate::auth::ssr::AuthSession;
     use leptos::*;
     use sqlx::SqlitePool;
 

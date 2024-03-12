@@ -1,7 +1,6 @@
 use leptos::*;
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::*;
-use rand::Rng;
 
 
 #[derive(Debug, Clone, leptos::server_fn::serde::Serialize, leptos::server_fn::serde::Deserialize)]
@@ -14,6 +13,7 @@ pub async fn upload_media_server(media: MediaPayload) -> Result<(), ServerFnErro
     use std::fs;
     use std::path::Path;
     use crate::app::ssr::*;
+    use rand::Rng;
 
     let pool = pool()?;
 
@@ -21,12 +21,12 @@ pub async fn upload_media_server(media: MediaPayload) -> Result<(), ServerFnErro
         let _ = fs::create_dir_all("./album")?;
     }
 
-    for (filename, bytes) in media.data {
+    for (_filename, bytes) in media.data {
         use uuid::Uuid;
-        let file_ext = match extract_ext(filename.clone()) {
-            Some(ext) => ext,
-            None => continue,
-        };
+        // let file_ext = match extract_ext(filename.clone()) {
+        //     Some(ext) => ext,
+        //     None => continue,
+        // };
 
         let uuid = Uuid::new_v4().to_string();
         let base64_data = base64::encode(&bytes); //Convert image to base64
@@ -81,15 +81,15 @@ pub fn UploadMedia() -> impl IntoView {
     }
 }
 
-#[cfg(feature = "ssr")]
-fn extract_ext(filename: String) -> Option<String> {
-    let parts = filename.split(".").collect::<Vec<_>>();
-    let n = parts.len();
-    if n < 2 {
-        return None;
-    }
-    Some(parts[n-1].to_string())
-}
+// #[cfg(feature = "ssr")]
+// fn extract_ext(filename: String) -> Option<String> {
+//     let parts = filename.split(".").collect::<Vec<_>>();
+//     let n = parts.len();
+//     if n < 2 {
+//         return None;
+//     }
+//     Some(parts[n-1].to_string())
+// }
 
 async fn file_convert(files: Option<web_sys::FileList>) -> MediaPayload {
 

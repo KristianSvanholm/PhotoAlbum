@@ -2,7 +2,7 @@ use leptos::*;
 use crate::auth::User;
 
 #[component]
-pub fn TopBar(user: User) -> impl IntoView {
+pub fn TopBar(_user: User) -> impl IntoView {
     /*
     
     use crate::auth::get_user;

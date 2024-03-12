@@ -13,8 +13,8 @@ use serde::Deserialize;
 pub struct ImageDb {
     id: String,
     path: String,
-    uploadDate: String,
-    createdDate: String,
+    upload_date: String,
+    created_date: String,
 }
 
 
@@ -31,7 +31,7 @@ pub async fn fetch_files() -> Result<Vec<ImageDb>, ServerFnError> {
 
     //Fetch images in descending order
     let files = sqlx::query_as::<_, ImageDb>(
-        "SELECT id, path, uploadDate, createdDate FROM files ORDER BY createdDate DESC",
+        "SELECT id, path, uploadDate AS upload_date, createdDate AS created_date FROM files ORDER BY createdDate DESC",
     )
     .fetch_all(&pool)
     .await?;
@@ -145,12 +145,12 @@ pub fn infinite_feed() -> impl IntoView {
         },
         UseInfiniteScrollOptions::default().distance(250.0),
     );
+    //Initiate feed
+    wImages.set(fetch_images(start.get(), 1)); 
 
     //Fetch images from db and make async compatible
     let imgres = create_resource(move || (), move |_| fetch_files());
 
-    //Initiate feed
-    wImages.set(fetch_images(start.get(), 1)); 
     view! {
 
         <Transition fallback=move || {
@@ -165,14 +165,12 @@ pub fn infinite_feed() -> impl IntoView {
                         }
                             .into_view()
                     }
-                    Ok(imgres) => {
+                    Ok(imgres) => {                        
                         view! {
-                            <img src={format!("data:image/jpeg;base64,{}",imgres[0].path)} alt="Base64 Image"/>
-                            <img src={format!("data:image/jpeg;base64,{}",imgres[1].path)} alt="Base64 Image"/>
-                            <img src={format!("data:image/jpeg;base64,{}",imgres[2].path)} alt="Base64 Image"/>
-                            <img src={format!("data:image/jpeg;base64,{}",imgres[3].path)} alt="Base64 Image"/>
-                            <img src={format!("data:image/jpeg;base64,{}",imgres[4].path)} alt="Base64 Image"/>
-
+                            //Display all images
+                            <For each=move || imgres.clone() key=|i| i.clone() let:item>
+                                <img src={format!("data:image/jpeg;base64,{}", item.path)} alt="Base64 Image" class="image imageSmooth" />
+                            </For>
                         }
                             .into_view()
                     }
