@@ -4,6 +4,40 @@ extern crate lazy_static;
 use std::sync::Mutex;
 use leptos::html::Div;
 use leptos_use::{UseInfiniteScrollOptions, use_infinite_scroll_with_options};
+use serde::Serialize;
+use serde::Deserialize;
+
+//Image struct for images from DB
+#[cfg_attr(feature="ssr", derive(sqlx::FromRow))]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
+pub struct ImageDb {
+    id: String,
+    path: String,
+    uploadDate: String,
+    createdDate: String,
+}
+
+
+//Fetch images from database
+#[server(Feed, "/api")]
+pub async fn fetch_files() -> Result<Vec<ImageDb>, ServerFnError> {
+    //DB connection
+    use crate::app::ssr::*;
+    let pool = pool()?; 
+
+    //Limit calls for later commit
+    // LIMIT {} OFFSET {}",
+    // count, start_index
+
+    //Fetch images in descending order
+    let files = sqlx::query_as::<_, ImageDb>(
+        "SELECT id, path, uploadDate, createdDate FROM files ORDER BY createdDate DESC",
+    )
+    .fetch_all(&pool)
+    .await?;
+
+    Ok(files)
+}
 
 //Image data struct
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -112,9 +146,40 @@ pub fn infinite_feed() -> impl IntoView {
         UseInfiniteScrollOptions::default().distance(250.0),
     );
 
+    //Fetch images from db and make async compatible
+    let imgres = create_resource(move || (), move |_| fetch_files());
+
     //Initiate feed
     wImages.set(fetch_images(start.get(), 1)); 
     view! {
+
+        <Transition fallback=move || {
+            view! { <span>"Loading images..."</span> }
+        }>
+        {move || {
+            imgres.get()
+                .map(|imgres| match imgres {
+                    Err(_) => {
+                        view! {
+                            <p>Failed to load image</p>
+                        }
+                            .into_view()
+                    }
+                    Ok(imgres) => {
+                        view! {
+                            <img src={format!("data:image/jpeg;base64,{}",imgres[0].path)} alt="Base64 Image"/>
+                            <img src={format!("data:image/jpeg;base64,{}",imgres[1].path)} alt="Base64 Image"/>
+                            <img src={format!("data:image/jpeg;base64,{}",imgres[2].path)} alt="Base64 Image"/>
+                            <img src={format!("data:image/jpeg;base64,{}",imgres[3].path)} alt="Base64 Image"/>
+                            <img src={format!("data:image/jpeg;base64,{}",imgres[4].path)} alt="Base64 Image"/>
+
+                        }
+                            .into_view()
+                    }
+                })
+        }}
+        </Transition>
+       
         //Change display of feed
         <button on:click=move |_| {
             if num.get() == 0 {

@@ -1,6 +1,8 @@
 use leptos::*;
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::*;
+use rand::Rng;
+
 
 #[derive(Debug, Clone, leptos::server_fn::serde::Serialize, leptos::server_fn::serde::Deserialize)]
 pub struct MediaPayload {
@@ -21,20 +23,25 @@ pub async fn upload_media_server(media: MediaPayload) -> Result<(), ServerFnErro
 
     for (filename, bytes) in media.data {
         use uuid::Uuid;
-        let file_ext = match extract_ext(filename) {
+        let file_ext = match extract_ext(filename.clone()) {
             Some(ext) => ext,
             None => continue,
         };
 
         let uuid = Uuid::new_v4().to_string();
-        let path = format!("./album/{}.{}", uuid, file_ext);
-        let _ = fs::write(&path, bytes)?;
+        let base64_data = base64::encode(&bytes); //Convert image to base64
     
         sqlx::query("INSERT INTO files (id, path, uploadDate, createdDate) VALUES (?, ?, ?, ?)")
             .bind(uuid)
-            .bind(path)
+            .bind(base64_data) // Bind base64 data to the path field
             .bind("fake_timestamp".to_string())
-            .bind("fake_timestamp".to_string())
+            //Randomize date, only for testing
+            .bind(format!(
+                "{}-{:02}-{:02}",
+                rand::thread_rng().gen_range(2010..2023),
+                rand::thread_rng().gen_range(1..13),
+                rand::thread_rng().gen_range(1..29),
+            ).to_string())
             .execute(&pool)
             .await?;
 
