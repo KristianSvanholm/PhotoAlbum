@@ -82,6 +82,11 @@ pub fn infinite_feed() -> impl IntoView {
             //Index counter for DB
             let newIndex = db_index.get() + FETCH_IMAGE_COUNT; 
 
+            //======
+            //BUG: Currently exists a bug where if you navigate away from the feed
+            // then back, it starts on index FETCH_IMAGE_COUNT and not 0
+            //======
+
             //Updates the vector of images for the feed
             let update_images = match images.get().get() {
                 Some(img) => img,
@@ -104,10 +109,10 @@ pub fn infinite_feed() -> impl IntoView {
         {move || match images.get().get() {
         None => view! { <p>"Loading..."</p> }.into_view(),
         Some(data) => view! { 
-                                <For each=move || data.clone() key=|i| i.clone() let:item>
-                                    <img src={format!("data:image/jpeg;base64,{}", item.path)} alt="Base64 Image" class="image imageSmooth" />
-                                </For> 
-                            }.into_view()
+            <For each=move || data.clone() key=|i| i.clone() let:item>
+                <img src={format!("data:image/jpeg;base64,{}", item.path)} alt="Base64 Image" class="image imageSmooth" />
+            </For> 
+        }.into_view()
     }}
             
         </div>
