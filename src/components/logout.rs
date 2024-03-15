@@ -5,9 +5,9 @@ use leptos_router::*;
 pub async fn logout() -> Result<(), ServerFnError> {
     use crate::auth::ssr::auth;
 
-    let auth = auth()?;
+    let mut auth = auth()?;
 
-    auth.logout_user();
+    auth.logout().await?;
     leptos_axum::redirect("/");
 
     Ok(())

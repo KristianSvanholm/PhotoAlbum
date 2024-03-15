@@ -5,28 +5,30 @@ use leptos_router::*;
 pub async fn login(
     username: String,
     password: String,
-    remember: Option<String>,
+    _remember: Option<String>,
 ) -> Result<(), ServerFnError> {
-    use crate::auth::{User, ssr::auth};
-    use crate::db::ssr::pool;
-    use bcrypt::verify;
+    use crate::auth::ssr::{Credentials, auth};
 
-    let pool = pool()?;
-    let auth = auth()?;
+    let mut auth = auth()?;
 
-    let user: User = User::get_from_username(username, &pool)
-        .await
-        .ok_or_else(|| ServerFnError::new("User does not exist."))?;
+    let res = auth.authenticate(Credentials{username: username, password: password}).await;
 
-    match verify(password, &user.password)? {
-        true => {
-            auth.login_user(user.id);
-            auth.remember_user(remember.is_some());
-            leptos_axum::redirect("/");
-            Ok(())
-        }
-        false => Err(ServerFnError::ServerError(
-            "Password does not match.".to_string(),
+    match res {
+        Ok(user) => {
+            match user{
+                Some(user) => {
+                    auth.login(&user).await?;
+                    Ok(())
+                },
+                None => {
+                    Err(ServerFnError::ServerError(
+                        "Password does not match or user does not exist.".to_string(),
+                    ))
+                },
+            }            
+        },
+        Err(_err) => Err(ServerFnError::ServerError(
+                "An error occured".to_string(),
         )),
     }
 }

@@ -6,14 +6,17 @@ use axum::{
     routing::get,
     Router,
 };
-use axum_session::{SessionConfig, SessionLayer, SessionStore};
-use axum_session_auth::{AuthConfig, AuthSessionLayer, SessionSqlitePool};
+use axum_login::{
+    AuthManagerLayerBuilder,
+    tower_sessions::{ExpiredDeletion, Expiry, SessionManagerLayer}
+};
+use tower_sessions_sqlx_store::SqliteStore;
 use leptos::{get_configuration, logging::log, provide_context};
 use leptos_axum::{
     generate_route_list, handle_server_fns_with_context, LeptosRoutes,
 };
 use photo_album::{
-    auth::{ssr::AuthSession, User},
+    auth::ssr::{AuthSession, Backend},
     state::AppState,
     app::*,
 };
@@ -107,15 +110,11 @@ async fn main() {
         .expect("Could not make pool.");
 
     // Auth section
-    let session_config =
-        SessionConfig::default().with_table_name("axum_sessions");
-    let auth_config = AuthConfig::<i64>::default();
-    let session_store = SessionStore::<SessionSqlitePool>::new(
-        Some(SessionSqlitePool::from(pool.clone())),
-        session_config,
-    )
-    .await
-    .unwrap();
+    let session_store = SqliteStore::new(pool.clone());
+        session_store.migrate().await.unwrap();
+    let deletion_task = tokio::task::spawn(
+        ExpiredDeletion::continuously_delete_expired(session_store.clone(), tokio::time::Duration::from_secs(60))
+    );
  
     if let Err(e) = sqlx::migrate!().run(&pool).await {
         eprintln!("{e:?}");
@@ -145,13 +144,12 @@ async fn main() {
         .route("/pkg/*path", get(file_and_error_handler))
         .leptos_routes_with_handler(routes, get(leptos_routes_handler))
         .layer(
-            AuthSessionLayer::<User, i64, SessionSqlitePool, SqlitePool>::new(
-                Some(pool.clone()),
-            )
-            .with_config(auth_config),
-        )
+            AuthManagerLayerBuilder::new(Backend::new(pool), 
+                SessionManagerLayer::new(session_store)
+                    .with_secure(false)
+                .with_expiry(Expiry::OnInactivity(time::Duration::seconds(30)))
+            ).build())
         .fallback(file_and_error_handler)
-        .layer(SessionLayer::new(session_store))
         .with_state(app_state);
 
     // run our app with hyper
