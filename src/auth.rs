@@ -32,6 +32,7 @@ pub mod ssr {
     pub type AuthSession = axum_login::AuthSession<
         Backend,
     >;
+    pub use axum_login::tower_sessions::{Session, SessionManagerLayer};
     pub use async_trait::async_trait;
     pub use bcrypt::{hash, verify, DEFAULT_COST};
     use serde::Deserialize;
@@ -43,6 +44,22 @@ pub mod ssr {
         use_context::<AuthSession>().ok_or_else(|| {
             ServerFnError::ServerError("Auth session missing.".into())
         })
+    }
+
+    pub fn session() -> Result<Session, ServerFnError> {
+        use_context::<Session>().ok_or_else(|| {
+            ServerFnError::ServerError("Session missing.".into())
+        })
+    }
+
+    pub async fn update_session() -> Result<(), ServerFnError> {
+        let session = session()?;
+        session.cycle_id().await?;
+        let counter: i64 = session.get("counter").await.unwrap().unwrap_or_default();
+        session.insert("counter", counter + 1).await.unwrap();
+        print!("Current count: {}", counter);
+        
+        Ok(())
     }
 
     impl User {

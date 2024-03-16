@@ -8,7 +8,7 @@ use axum::{
 };
 use axum_login::{
     AuthManagerLayerBuilder,
-    tower_sessions::{ExpiredDeletion, Expiry, SessionManagerLayer}
+    tower_sessions::{ExpiredDeletion, Expiry, SessionManagerLayer, Session}
 };
 use tower_sessions_sqlx_store::SqliteStore;
 use leptos::{get_configuration, logging::log, provide_context};
@@ -25,6 +25,7 @@ use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 async fn server_fn_handler(
     State(app_state): State<AppState>,
     auth_session: AuthSession,
+    session: Session,
     path: Path<String>,
     request: Request<AxumBody>,
 ) -> impl IntoResponse {
@@ -33,6 +34,7 @@ async fn server_fn_handler(
     handle_server_fns_with_context(
         move || {
             provide_context(auth_session.clone());
+            provide_context(session.clone());
             provide_context(app_state.pool.clone());
         },
         request,
@@ -145,9 +147,10 @@ async fn main() {
         .leptos_routes_with_handler(routes, get(leptos_routes_handler))
         .layer(
             AuthManagerLayerBuilder::new(Backend::new(pool), 
-                SessionManagerLayer::new(session_store)
-                    .with_secure(false)
+                SessionManagerLayer::new(session_store.clone())
+                .with_secure(false)
                 .with_expiry(Expiry::OnInactivity(time::Duration::seconds(30)))
+                .with_name("session")
             ).build())
         .fallback(file_and_error_handler)
         .with_state(app_state);

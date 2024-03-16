@@ -7,7 +7,7 @@ pub async fn login(
     password: String,
     _remember: Option<String>,
 ) -> Result<(), ServerFnError> {
-    use crate::auth::ssr::{Credentials, auth};
+    use crate::auth::ssr::{Credentials, auth, update_session};
 
     let mut auth = auth()?;
 
@@ -18,6 +18,7 @@ pub async fn login(
             match user{
                 Some(user) => {
                     auth.login(&user).await?;
+                    update_session().await?;
                     Ok(())
                 },
                 None => {
