@@ -46,23 +46,25 @@ pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<ImageDb>, 
 
 
 //Helper function to build the vector of images as they are requested from db
-pub async fn fetch_files_and_handle_errors(db_index: usize, count: usize, stop: WriteSignal<bool>) -> Vec<ImageDb> {
+pub async fn fetch_files_and_handle_errors(db_index: usize, count: usize) -> Vec<ImageDb> {
     match fetch_files(db_index, count).await {
         //Extend the current vector if ok
         Ok(files) => files, 
         //Returns the incoming vector, e.g. if the there are no more images in db
-        Err(_) => {
-            stop(true); // This isnt working but no biggie, figure it out later.
-            vec![]
-        }
+        Err(_) => vec![],
     }
 }
 
-async fn append_imgs(y: WriteSignal<Vec<ImageDb>>, x: ReadSignal<Vec<ImageDb>>, additional: Vec<ImageDb>) -> Vec<ImageDb>{
-    let mut z = x.get_untracked();
-    z.extend(additional);
-    y(z);
-    x.get_untracked()
+async fn append_imgs(y: WriteSignal<Vec<ImageDb>>, x: ReadSignal<Vec<ImageDb>>, additional: Vec<ImageDb>, stop: WriteSignal<bool>) -> Vec<ImageDb>{
+    if additional.len() == 0 {
+        stop(true);
+        return x.get_untracked();
+    }
+
+    let mut z = x.get_untracked(); // Get current state as mutable value
+    z.extend(additional); // Extend with new images
+    y(z); // Update state to new value
+    x.get_untracked() // Return new list
     //logging::log!("{}, {} - {} | {}", old.len(), additional.len(), i, x.get_untracked().len());
 }
 
@@ -84,7 +86,7 @@ pub fn infinite_feed() -> impl IntoView {
         move |_| async move {
             append_imgs(set_images, images, fetch_files_and_handle_errors(
                         db_index.get_untracked(),
-                        FETCH_IMAGE_COUNT, set_stop).await).await
+                        FETCH_IMAGE_COUNT).await, set_stop).await
         });
 
     let el = create_node_ref::<Div>();
@@ -95,8 +97,7 @@ pub fn infinite_feed() -> impl IntoView {
         el,
         move |_| async move {
             if stop.get_untracked(){
-                logging::log!("STOPPED");
-                return;
+                return; // TODO:: Look into disabling the entire thing instead of just returning forever
             }
             logging::log!("{}", stop.get_untracked());
             //Index counter for DB
