@@ -2,7 +2,6 @@ use leptos::*;
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::*;
 
-
 #[derive(Debug, Clone, leptos::server_fn::serde::Serialize, leptos::server_fn::serde::Deserialize)]
 pub struct MediaPayload {
     data: Vec<(String, Vec<u8>)>
@@ -21,21 +20,22 @@ pub async fn upload_media_server(media: MediaPayload) -> Result<(), ServerFnErro
         let _ = fs::create_dir_all("./album")?;
     }
 
-    for (_filename, bytes) in media.data {
+    for (filename, bytes) in media.data {
         use uuid::Uuid;
-        // let file_ext = match extract_ext(filename.clone()) {
-        //     Some(ext) => ext,
-        //     None => continue,
-        // };
+        let file_ext = match extract_ext(filename) {
+            Some(ext) => ext,
+            None => continue,
+        };
 
         let uuid = Uuid::new_v4().to_string();
-        let base64_data = base64::encode(&bytes); //Convert image to base64
+        let path = format!("./album/{}.{}", uuid, file_ext);
+        let _ = fs::write(&path, bytes)?;
     
         sqlx::query("INSERT INTO files (id, path, uploadDate, createdDate) VALUES (?, ?, ?, ?)")
             .bind(uuid)
-            .bind(base64_data) // Bind base64 data to the path field
+            .bind(path)
             .bind("fake_timestamp".to_string())
-            //Randomize date, only for testing
+            //Randomize data for testing
             .bind(format!(
                 "{}-{:02}-{:02}",
                 rand::thread_rng().gen_range(2010..2023),
@@ -81,15 +81,15 @@ pub fn UploadMedia() -> impl IntoView {
     }
 }
 
-// #[cfg(feature = "ssr")]
-// fn extract_ext(filename: String) -> Option<String> {
-//     let parts = filename.split(".").collect::<Vec<_>>();
-//     let n = parts.len();
-//     if n < 2 {
-//         return None;
-//     }
-//     Some(parts[n-1].to_string())
-// }
+#[cfg(feature = "ssr")]
+fn extract_ext(filename: String) -> Option<String> {
+    let parts = filename.split(".").collect::<Vec<_>>();
+    let n = parts.len();
+    if n < 2 {
+        return None;
+    }
+    Some(parts[n-1].to_string())
+}
 
 async fn file_convert(files: Option<web_sys::FileList>) -> MediaPayload {
 
