@@ -3,6 +3,8 @@ use leptos::html::Div;
 use leptos_use::{UseInfiniteScrollOptions, use_infinite_scroll_with_options};
 use serde::Serialize;
 use serde::Deserialize;
+use std::fs::File;
+use std::io::Read;
 
 //Image struct for images from DB
 #[cfg_attr(feature="ssr", derive(sqlx::FromRow))]
@@ -33,7 +35,7 @@ pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<ImageDb>, 
     //     .await?;
 
     //Fetch images in descending order
-    let files = sqlx::query_as::<_, ImageDb>(
+    let mut files = sqlx::query_as::<_, ImageDb>(
         "SELECT id, path, uploadDate AS upload_date, createdDate AS created_date FROM files ORDER BY createdDate DESC LIMIT ? OFFSET ?;",
     )
     .bind(count.to_string())
@@ -41,11 +43,23 @@ pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<ImageDb>, 
     .fetch_all(&pool)
     .await?;
 
+    for img in &mut files{
+        // Read the image file
+        let mut file = File::open(&img.path).expect("Failed to open image file");
+        let mut buffer = Vec::new();
+        file.read_to_end(&mut buffer).expect("Failed to read image file");
+
+        // Encode the image buffer as base64
+        let base64_image = base64::encode(&buffer);
+
+        // Generate src attribute value with the base64 image
+        img.path = base64_image;
+    }
+
     Ok(files)
 }
 
 
-//Helper function to build the vector of images as they are requested from db
 pub async fn fetch_files_and_handle_errors(db_index: usize, count: usize, stop: WriteSignal<bool>) -> Vec<ImageDb> {
     match fetch_files(db_index, count).await {
         //Extend the current vector if ok
