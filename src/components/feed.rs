@@ -46,32 +46,47 @@ pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<ImageDb>, 
 
 
 //Helper function to build the vector of images as they are requested from db
-pub async fn fetch_files_and_handle_errors(db_index: usize, count: usize, mut old_vec: Vec<ImageDb>) -> Vec<ImageDb> {
+pub async fn fetch_files_and_handle_errors(db_index: usize, count: usize, stop: WriteSignal<bool>) -> Vec<ImageDb> {
     match fetch_files(db_index, count).await {
         //Extend the current vector if ok
-        Ok(files) => {
-        old_vec.extend(files);
-        old_vec
-        }, 
+        Ok(files) => files, 
         //Returns the incoming vector, e.g. if the there are no more images in db
-        Err(_) => old_vec
+        Err(_) => {
+            stop(true); // This isnt working but no biggie, figure it out later.
+            vec![]
+        }
     }
+}
+
+async fn append_imgs(y: WriteSignal<Vec<ImageDb>>, x: ReadSignal<Vec<ImageDb>>, additional: Vec<ImageDb>) -> Vec<ImageDb>{
+    let mut z = x.get_untracked();
+    z.extend(additional);
+    y(z);
+    x.get_untracked()
+    //logging::log!("{}, {} - {} | {}", old.len(), additional.len(), i, x.get_untracked().len());
 }
 
 //Images per infinite feed request
 //(If this value is too high it seems to break infinite feed, around 10+ )
-const FETCH_IMAGE_COUNT: usize = 7;
+const FETCH_IMAGE_COUNT: usize = 10;
 
 //Creates an infinite feed of images
 #[component]
 pub fn infinite_feed() -> impl IntoView {
     //Counter for what index to request form in DB
-    let (db_index, set_db_index) = create_signal(0);  
-    //Initialize the infinite feed                                   
-    let init_ve: Vec<ImageDb> = Vec::new();
-    let (init_images, wInit_images) = create_signal(init_ve);
+    let (stop, set_stop) = create_signal(false);
+    let (db_index, set_db_index) = create_signal(0);
+    let initImgs: Vec<ImageDb> = vec![];
+    let (images, set_images) = create_signal(initImgs);
     //Signal with resource called every time the bottom is reached in infinite feed
-    let (images, _wImages) = create_signal(create_resource(db_index, move |_| fetch_files_and_handle_errors(db_index.get(),FETCH_IMAGE_COUNT, init_images.get())));
+    let _imageUpdater = create_resource(
+        move || db_index.get(), 
+        move |_| async move {
+            append_imgs(set_images, images, fetch_files_and_handle_errors(
+                        db_index.get_untracked(),
+                        FETCH_IMAGE_COUNT, set_stop).await).await
+        });
+
     let el = create_node_ref::<Div>();
     
     
@@ -79,45 +94,25 @@ pub fn infinite_feed() -> impl IntoView {
     let _ = use_infinite_scroll_with_options(
         el,
         move |_| async move {
+            if stop.get_untracked(){
+                logging::log!("STOPPED");
+                return;
+            }
+            logging::log!("{}", stop.get_untracked());
             //Index counter for DB
-            let newIndex = db_index.get() + FETCH_IMAGE_COUNT; 
-
-            //======
-            //BUG: Currently exists a bug where if you navigate away from the feed
-            // then back, it starts on index FETCH_IMAGE_COUNT and not 0
-            //======
-
-            //Updates the vector of images for the feed
-            let update_images = match images.get().get() {
-                Some(img) => img,
-                None => vec![], // Return None if images.get() returns None
-            };
-            wInit_images.set(update_images);
-            
+            let newIndex = db_index.get_untracked() + FETCH_IMAGE_COUNT; 
+            logging::log!("Requesting {} more images. Index: {}", FETCH_IMAGE_COUNT, db_index.get_untracked()+FETCH_IMAGE_COUNT); 
             set_db_index.set(newIndex);
         },
-        UseInfiniteScrollOptions::default().distance(250.0),
+        UseInfiniteScrollOptions::default().distance(10.0),
     );
 
     view! {
-
-        <Transition fallback=move || {
-            view! { <span>"Loading images..."</span> }
-        }>
         <div class="flowdiv" node_ref=el> //class="flowdiv"
-
-        {move || match images.get().get() {
-        None => view! { <p>"Loading..."</p> }.into_view(),
-        Some(data) => view! { 
-            <For each=move || data.clone() key=|i| i.clone() let:item>
+            <For each=move || images.get() key=|i| i.clone() let:item>
                 <img src={format!("data:image/jpeg;base64,{}", item.path)} alt="Base64 Image" class="image imageSmooth" />
             </For> 
-        }.into_view()
-    }}
-            
         </div>
-        </Transition>
-       
     }
 }
 
