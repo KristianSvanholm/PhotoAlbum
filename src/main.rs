@@ -21,6 +21,7 @@ use photo_album::{
     app::*,
 };
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
+use tokio::{signal, task::AbortHandle};
 
 async fn server_fn_handler(
     State(app_state): State<AppState>,
@@ -115,7 +116,7 @@ async fn main() {
     let session_store = SqliteStore::new(pool.clone());
         session_store.migrate().await.unwrap();
     let deletion_task = tokio::task::spawn(
-        ExpiredDeletion::continuously_delete_expired(session_store.clone(), tokio::time::Duration::from_secs(60))
+        ExpiredDeletion::continuously_delete_expired(session_store.clone(), tokio::time::Duration::from_secs(12*60*60))
     );
  
     if let Err(e) = sqlx::migrate!().run(&pool).await {
@@ -159,7 +160,36 @@ async fn main() {
     // `axum::Server` is a re-export of `hyper::Server`
     log!("listening on http://{}", &addr);
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+    // Ensure we use a shutdown signal to bort the deletion task.
     axum::serve(listener, app.into_make_service())
+        .with_graceful_shutdown(shutdown_signal(deletion_task.abort_handle()))
         .await
         .unwrap();
+
+    deletion_task.await.unwrap().unwrap();
+}
+
+
+async fn shutdown_signal(deletion_task_abort_handle: AbortHandle) {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => { deletion_task_abort_handle.abort() },
+        _ = terminate => { deletion_task_abort_handle.abort() },
+    }
 }
