@@ -75,7 +75,6 @@ pub mod session_expiry {
             //Update expiry
             session.insert(LAST_UPDATED_KEY, OffsetDateTime::now_utc()).await.unwrap();
             session.cycle_id().await?;
-            println!("Updated");
             if let Expiry::OnInactivity(duration) = expiry {
                 let expiry = Expiry::OnInactivity(duration);
                 session.insert(EXPIRY_KEY, expiry).await.unwrap();

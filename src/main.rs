@@ -133,12 +133,7 @@ async fn main() {
     // Setting this to None means we'll be using cargo-leptos and its env vars
     let conf = get_configuration(None).await.unwrap();
     let leptos_options = conf.leptos_options;
-    //let expiry_config: CustomExpirySessionConfig = Default::default();
-    let expiry_config =  SessionExpiryConfig{
-        expiry: time::Duration::seconds(20),
-        max_age_term_expiry: time::Duration::seconds(70), 
-        on_activity_check: time::Duration::seconds(10),
-    };
+    let expiry_config: SessionExpiryConfig = Default::default();
     let addr = leptos_options.site_addr;
     let routes = generate_route_list(App);
 
