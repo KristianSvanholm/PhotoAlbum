@@ -5,6 +5,7 @@ use axum::{
     response::{IntoResponse, Response},
     routing::get,
     Router,
+    middleware,
 };
 use axum_login::{
     AuthManagerLayerBuilder,
@@ -16,7 +17,8 @@ use leptos_axum::{
     generate_route_list, handle_server_fns_with_context, LeptosRoutes,
 };
 use photo_album::{
-    auth::ssr::{AuthSession, Backend, CustomExpirySessionConfig},
+    auth::ssr::{AuthSession, Backend},
+    session::session_expiry::SessionExpiryConfig,
     state::AppState,
     app::*,
 };
@@ -98,6 +100,7 @@ async fn add_first_user(
 #[tokio::main]
 async fn main() {
     use photo_album::fileserv::file_and_error_handler;
+    use photo_album::session::session_expiry::session_expiry_manager;
     use std::fs::File;
     use std::path::Path;
 
@@ -131,7 +134,7 @@ async fn main() {
     let conf = get_configuration(None).await.unwrap();
     let leptos_options = conf.leptos_options;
     //let expiry_config: CustomExpirySessionConfig = Default::default();
-    let expiry_config =  CustomExpirySessionConfig{
+    let expiry_config =  SessionExpiryConfig{
         expiry: time::Duration::seconds(20),
         max_age_term_expiry: time::Duration::seconds(70), 
         on_activity_check: time::Duration::seconds(10),
@@ -154,12 +157,14 @@ async fn main() {
         )
         .route("/pkg/*path", get(file_and_error_handler))
         .leptos_routes_with_handler(routes, get(leptos_routes_handler))
+        .layer(middleware::from_fn_with_state(app_state.clone(), session_expiry_manager))
         .layer(
             AuthManagerLayerBuilder::new(Backend::new(pool), 
                 SessionManagerLayer::new(session_store.clone())
                 .with_secure(false)
-                .with_expiry(Expiry::OnInactivity(expiry_config.expiry))
                 .with_name("session")
+                //needed so the cookie gets a max-age attribute
+                .with_expiry(Expiry::OnInactivity(expiry_config.expiry))
             ).build())
         .fallback(file_and_error_handler)
         .with_state(app_state);

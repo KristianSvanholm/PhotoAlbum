@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod session; 
 pub mod error_template;
 #[cfg(feature = "ssr")]
 pub mod state;

@@ -7,7 +7,8 @@ pub async fn login(
     password: String,
     remember: Option<String>,
 ) -> Result<(), ServerFnError> {
-    use crate::auth::ssr::{Credentials, auth, update_session, make_session_long_term};
+    use crate::auth::ssr::{Credentials, auth};
+    use crate::session::session_expiry::make_session_long_term;
 
     let mut auth = auth()?;
 
@@ -21,7 +22,6 @@ pub async fn login(
                     if remember.is_some(){
                         make_session_long_term().await?;
                     }
-                    update_session().await?;
                     Ok(())
                 },
                 None => {
