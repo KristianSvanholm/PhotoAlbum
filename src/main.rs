@@ -16,7 +16,7 @@ use leptos_axum::{
     generate_route_list, handle_server_fns_with_context, LeptosRoutes,
 };
 use photo_album::{
-    auth::ssr::{AuthSession, Backend},
+    auth::ssr::{AuthSession, Backend, CustomExpirySessionConfig},
     state::AppState,
     app::*,
 };
@@ -36,6 +36,7 @@ async fn server_fn_handler(
         move || {
             provide_context(auth_session.clone());
             provide_context(session.clone());
+            provide_context(app_state.expiry_config.clone());
             provide_context(app_state.pool.clone());
         },
         request,
@@ -129,11 +130,18 @@ async fn main() {
     // Setting this to None means we'll be using cargo-leptos and its env vars
     let conf = get_configuration(None).await.unwrap();
     let leptos_options = conf.leptos_options;
+    //let expiry_config: CustomExpirySessionConfig = Default::default();
+    let expiry_config =  CustomExpirySessionConfig{
+        expiry: time::Duration::seconds(20),
+        max_age_term_expiry: time::Duration::seconds(70), 
+        on_activity_check: time::Duration::seconds(10),
+    };
     let addr = leptos_options.site_addr;
     let routes = generate_route_list(App);
 
     let app_state = AppState {
         leptos_options,
+        expiry_config,
         pool: pool.clone(),
         routes: routes.clone(),
     };
@@ -150,7 +158,7 @@ async fn main() {
             AuthManagerLayerBuilder::new(Backend::new(pool), 
                 SessionManagerLayer::new(session_store.clone())
                 .with_secure(false)
-                .with_expiry(Expiry::OnInactivity(time::Duration::seconds(30)))
+                .with_expiry(Expiry::OnInactivity(expiry_config.expiry))
                 .with_name("session")
             ).build())
         .fallback(file_and_error_handler)

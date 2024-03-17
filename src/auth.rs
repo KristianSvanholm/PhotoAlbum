@@ -32,10 +32,11 @@ pub mod ssr {
     pub type AuthSession = axum_login::AuthSession<
         Backend,
     >;
-    pub use axum_login::tower_sessions::{Session, SessionManagerLayer};
+    pub use axum_login::tower_sessions::{Session, SessionManagerLayer, Expiry};
     pub use async_trait::async_trait;
     pub use bcrypt::{hash, verify, DEFAULT_COST};
     use serde::Deserialize;
+    use time::{OffsetDateTime, Duration};
     use tokio::task;
 
     use leptos::*;
@@ -52,14 +53,67 @@ pub mod ssr {
         })
     }
 
+    pub fn expiry_config() -> Result<CustomExpirySessionConfig, ServerFnError> {
+        use_context::<CustomExpirySessionConfig>().ok_or_else(|| {
+            ServerFnError::ServerError("Expiry config missing.".into())
+        })
+    }
+
     pub async fn update_session() -> Result<(), ServerFnError> {
         let session = session()?;
-        session.cycle_id().await?;
-        let counter: i64 = session.get("counter").await.unwrap().unwrap_or_default();
-        session.insert("counter", counter + 1).await.unwrap();
-        print!("Current count: {}", counter);
+        let expiry_config = expiry_config()?;
+        println!("Expiry: {}", session.expiry_date());
+        let last_accessed: OffsetDateTime = session.get("last_accessed").await.unwrap().unwrap_or_else(|| OffsetDateTime::now_utc().saturating_sub(Duration::hours(2)));
+        println!("Threshold: {}", OffsetDateTime::now_utc().saturating_add(expiry_config.expiry));
+        //if last_accessed < OffsetDateTime::now_utc().saturating_sub(expiry_config.on_activity_check){
+            session.insert("last_accessed", OffsetDateTime::now_utc()).await.unwrap();
+            session.cycle_id().await?;
+            println!("Updated");
+            if session.expiry_date() < OffsetDateTime::now_utc().saturating_add(expiry_config.expiry){
+                session.set_expiry(Some(Expiry::OnInactivity(expiry_config.expiry)));
+                println!("Changed expiry");
+            }
+        //}
+        println!("Last accessed: {}", last_accessed);
         
         Ok(())
+    }
+
+    pub async fn make_session_long_term() -> Result<(), ServerFnError> {
+        let session = session()?;
+        let expiry_config = expiry_config()?;
+        let expired_at = 
+            OffsetDateTime::now_utc()
+            .saturating_add(expiry_config.max_age_term_expiry);
+        println!("Long session: {}", expired_at);
+        session.set_expiry(Some(Expiry::AtDateTime(expired_at)));
+        session.insert("last_accessed", OffsetDateTime::now_utc()).await.unwrap();
+        assert_eq!(session.expiry(), Some(Expiry::AtDateTime(expired_at)));
+        println!("Long session: {}", session.expiry_date());
+        Ok(())
+    }
+
+    #[derive(Debug, Clone, Copy)]
+    pub struct CustomExpirySessionConfig{
+        /// Expire on inactivity after expiry on default
+        pub expiry: Duration,
+        /// if remember me option is on allow long long sessions
+        /// Switch to on inactivity after max_age_term_expiry
+        pub max_age_term_expiry: Duration,
+        /// time interval to check for to update expiry to prevent
+        /// too many database writes
+        /// needs to be smaller than expiry
+        pub on_activity_check: Duration, 
+    }
+
+    impl Default for CustomExpirySessionConfig {
+        fn default() -> Self {
+            Self {
+                expiry: Duration::hours(3),
+                max_age_term_expiry: Duration::days(60), 
+                on_activity_check: Duration::hours(1),
+            }
+        }
     }
 
     impl User {

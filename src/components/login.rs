@@ -5,9 +5,9 @@ use leptos_router::*;
 pub async fn login(
     username: String,
     password: String,
-    _remember: Option<String>,
+    remember: Option<String>,
 ) -> Result<(), ServerFnError> {
-    use crate::auth::ssr::{Credentials, auth, update_session};
+    use crate::auth::ssr::{Credentials, auth, update_session, make_session_long_term};
 
     let mut auth = auth()?;
 
@@ -18,6 +18,9 @@ pub async fn login(
             match user{
                 Some(user) => {
                     auth.login(&user).await?;
+                    if remember.is_some(){
+                        make_session_long_term().await?;
+                    }
                     update_session().await?;
                     Ok(())
                 },
