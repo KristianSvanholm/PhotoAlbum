@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use leptos::html::Input;
 #[cfg(feature = "ssr")]
 use sqlx::SqlitePool;
+#[cfg(feature = "ssr")]
 use crate::auth::get_user;
 
 #[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]

@@ -20,10 +20,11 @@ pub async fn signup(
 
     use bcrypt::{hash, DEFAULT_COST};
     use crate::db::ssr::*;
-    use crate::auth::{User, ssr::auth};
+    use crate::auth::ssr::{SqlUser, auth};
+    use crate::session::session_expiry::make_session_long_term;
 
     let pool = pool()?;
-    let auth = auth()?;
+    let mut auth = auth()?;
 
     if password != password_confirmation {
         return Err(ServerFnError::ServerError(
@@ -34,7 +35,7 @@ pub async fn signup(
     let invited_user = sqlx::query_as::<_, Invite>(
             "SELECT i.user_id, u.username 
             FROM invites i 
-            INNER JOIN users u on u.id = id 
+            INNER JOIN users u on u.id = i.user_id 
             WHERE token = ?"
         )
         .bind(&invite)
@@ -61,14 +62,16 @@ pub async fn signup(
     .await?;
 
     let user =
-        User::get_from_username(invited_user.username, &pool)
+        SqlUser::get_from_username(invited_user.username, &pool)
             .await
             .ok_or_else(|| {
                 ServerFnError::new("Signup failed: User does not exist.")
             })?;
 
-    auth.login_user(user.id);
-    auth.remember_user(remember.is_some());
+    auth.login(&user).await?;
+    if remember.is_some(){
+        make_session_long_term().await?;
+    }
 
     leptos_axum::redirect("/");
 
