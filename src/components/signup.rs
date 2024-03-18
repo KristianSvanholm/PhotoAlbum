@@ -13,7 +13,7 @@ pub async fn signup(
     email: String,
     password: String,
     password_confirmation: String,
-    _remember: Option<String>,
+    remember: Option<String>,
     invite: String,
 ) -> Result<(), ServerFnError> {
     //TODO check if invitation is expired
@@ -21,6 +21,7 @@ pub async fn signup(
     use bcrypt::{hash, DEFAULT_COST};
     use crate::db::ssr::*;
     use crate::auth::ssr::{SqlUser, auth};
+    use crate::session::session_expiry::make_session_long_term;
 
     let pool = pool()?;
     let mut auth = auth()?;
@@ -68,6 +69,9 @@ pub async fn signup(
             })?;
 
     auth.login(&user).await?;
+    if remember.is_some(){
+        make_session_long_term().await?;
+    }
 
     leptos_axum::redirect("/");
 
