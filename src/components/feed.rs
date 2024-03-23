@@ -5,6 +5,8 @@ use serde::Serialize;
 use serde::Deserialize;
 use std::fs::File;
 use std::io::Read;
+use std::sync::Mutex;
+extern crate lazy_static;
 
 //Image struct for images from DB
 #[cfg_attr(feature="ssr", derive(sqlx::FromRow))]
@@ -16,6 +18,27 @@ pub struct ImageDb {
     created_date: String,
 }
 
+//Store previous fetched date from previous request to prevent duplicate date titles
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct PreviousDate {
+    month: String,
+    year: String,
+}
+
+//Takes a date string and image struct
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
+enum Element {
+    String(String),
+    ImageDb(ImageDb),
+}
+
+//Store last fetched date as global variable
+lazy_static::lazy_static! {
+    static ref PREVIOUS_DATE: Mutex<PreviousDate> = Mutex::new(PreviousDate{
+        month: String::new(),
+        year: String::new(),
+    });
+}
 
 //Fetch images from database
 #[server(Feed, "/api")]
@@ -60,16 +83,45 @@ pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<ImageDb>, 
 }
 
 //Helper function to build the vector of images as they are requested from db
-pub async fn fetch_files_and_handle_errors(db_index: usize, count: usize) -> Vec<ImageDb> {
+pub async fn fetch_files_and_handle_errors(db_index: usize, count: usize) -> Vec<Element> {
     match fetch_files(db_index, count).await {
         //Extend the current vector if ok
-        Ok(files) => files, 
+        Ok(files) => {
+             //New vector with months and years seperated
+            let mut grouped_images: Vec<Element> = Vec::new();
+
+            //Access previous date requested
+            let mut previous_date = PREVIOUS_DATE.lock().unwrap();
+            let mut current_month = previous_date.month.clone();
+            let mut current_year = previous_date.year.clone();
+
+            //Iterates over sorted images and adds years and months
+            for image in files {
+                let year = image.created_date[0..4].to_string();
+                let month = image.created_date[5..7].to_string();
+                if month != current_month || year != current_year{
+                    //Add year on change
+                    if year != current_year{
+                        grouped_images.push(Element::String(year.to_string()));
+                        current_year = year.to_string();
+                    }
+                    //Add month on change
+                    grouped_images.push(Element::String(month.to_string()));
+                    current_month = month.to_string();
+                }
+                grouped_images.push(Element::ImageDb(image));
+            }     
+            previous_date.month = current_month;
+            previous_date.year = current_year;
+
+            grouped_images
+        }, 
         //Returns the incoming vector, e.g. if the there are no more images in db
         Err(_) => vec![],
     }
 }
 
-async fn append_imgs(y: WriteSignal<Vec<ImageDb>>, x: ReadSignal<Vec<ImageDb>>, additional: Vec<ImageDb>, stop: WriteSignal<bool>) -> Vec<ImageDb>{
+async fn append_imgs(y: WriteSignal<Vec<Element>>, x: ReadSignal<Vec<Element>>, additional: Vec<Element>, stop: WriteSignal<bool>) -> Vec<Element>{
     if additional.len() == 0 {
         stop(true);
         return x.get_untracked();
@@ -92,7 +144,7 @@ pub fn infinite_feed() -> impl IntoView {
     //Counter for what index to request form in DB
     let (stop, set_stop) = create_signal(false);
     let (db_index, set_db_index) = create_signal(0);
-    let initImgs: Vec<ImageDb> = vec![];
+    let initImgs: Vec<Element> = vec![];
     let (images, set_images) = create_signal(initImgs);
     //Signal with resource called every time the bottom is reached in infinite feed
     let _imageUpdater = create_resource(
@@ -104,6 +156,12 @@ pub fn infinite_feed() -> impl IntoView {
         });
 
     let el = create_node_ref::<Div>();
+
+    //Change feed display variables (smooth/date)
+    let (name, set_name) = create_signal("Smooth feed".to_string());
+    let (feedDisplayClass, set_feedDisplayClass) = create_signal("break date_title".to_string());
+    let (imageDisplayClass, set_imageDisplayClass) = create_signal("image".to_string());
+    let (num, set_num) = create_signal(0);
     
     
     // //Creates and loads infinite feed
@@ -123,9 +181,54 @@ pub fn infinite_feed() -> impl IntoView {
     );
 
     view! {
+        //Change display of feed
+        <button on:click=move |_| {
+            if num.get() == 0 {
+                set_name("Date feed".to_string());
+                set_feedDisplayClass("invis".to_string());
+                set_imageDisplayClass("image imageSmooth".to_string());
+                set_num(1);
+            } else {
+                set_name("Smooth feed".to_string());
+                set_feedDisplayClass("break date_title".to_string());
+                set_imageDisplayClass("image".to_string());
+                set_num(0);
+            }
+            }>{name}</button>
         <div class="flowdiv" node_ref=el> //class="flowdiv"
             <For each=move || images.get() key=|i| i.clone() let:item>
-                <img src={format!("data:image/jpeg;base64,{}", item.path)} alt="Base64 Image" class="image imageSmooth" />
+
+            { match item{
+                //Image
+                Element::ImageDb(ref img) => {
+                    view!{
+                    <div class={move || imageDisplayClass.get()}>
+                    <img src={format!("data:image/jpeg;base64,{}", img.path)} alt="Base64 Image" class="image imageSmooth" />
+                    </div>
+                }},
+                //Date
+                Element::String(ref date) => {
+                    let date_clone = date.clone(); //Allow str to reach all the way in
+                    view!{
+                    <div class={move || feedDisplayClass.get()}>{
+                        match date_clone.parse().unwrap() {
+                            1 => "January".to_string(),
+                            2 => "February".to_string(),
+                            3 => "March".to_string(),
+                            4 => "April".to_string(),
+                            5 => "May".to_string(),
+                            6 => "June".to_string(),
+                            7 => "July".to_string(),
+                            8 => "August".to_string(),
+                            9 => "September".to_string(),
+                            10 => "October".to_string(),
+                            11 => "November".to_string(),
+                            12 => "December".to_string(),
+                            _ => date_clone
+                        }
+                    }</div>
+                }}  
+            }}
             </For> 
         </div>
     }
