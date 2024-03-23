@@ -1,45 +1,77 @@
 use leptos::*;
 use leptos_router::*;
 
+#[cfg(feature = "ssr")]
+#[derive(sqlx::FromRow)]
+struct Invite {
+    user_id: i64,
+    username: String,
+}
+
 #[server(Signup, "/api")]
 pub async fn signup(
-    username: String,
     email: String,
     password: String,
     password_confirmation: String,
     remember: Option<String>,
+    invite: String,
 ) -> Result<(), ServerFnError> {
+    //TODO check if invitation is expired
+
     use bcrypt::{hash, DEFAULT_COST};
-    use crate::app::ssr::*;
-    use crate::auth::User;
+    use crate::db::ssr::*;
+    use crate::auth::ssr::{SqlUser, auth};
+    use crate::session::session_expiry::make_session_long_term;
 
     let pool = pool()?;
-    let auth = auth()?;
+    let mut auth = auth()?;
 
     if password != password_confirmation {
         return Err(ServerFnError::ServerError(
             "Passwords did not match.".to_string(),
         ));
     }
+    
+    let invited_user = sqlx::query_as::<_, Invite>(
+            "SELECT i.user_id, u.username 
+            FROM invites i 
+            INNER JOIN users u on u.id = i.user_id 
+            WHERE token = ?"
+        )
+        .bind(&invite)
+        .fetch_one(&pool)
+        .await?;
 
     let password_hashed = hash(password, DEFAULT_COST).unwrap();
 
-    sqlx::query("INSERT INTO users (username, email, password) VALUES (?,?,?)")
-        .bind(username.clone())
-        .bind(email.clone())
+    sqlx::query("UPDATE users SET 
+            email = ?,
+            password = ?,
+            signed_up = true
+            WHERE id = ?"
+        ).bind(email.clone())
         .bind(password_hashed)
+        .bind(invited_user.user_id)
         .execute(&pool)
         .await?;
 
+    sqlx::query("DELETE FROM invites 
+        WHERE token = ?"
+    ).bind(&invite)
+    .execute(&pool)
+    .await?;
+
     let user =
-        User::get_from_username(username, &pool)
+        SqlUser::get_from_username(invited_user.username, &pool)
             .await
             .ok_or_else(|| {
                 ServerFnError::new("Signup failed: User does not exist.")
             })?;
 
-    auth.login_user(user.id);
-    auth.remember_user(remember.is_some());
+    auth.login(&user).await?;
+    if remember.is_some(){
+        make_session_long_term().await?;
+    }
 
     leptos_axum::redirect("/");
 
@@ -50,19 +82,13 @@ pub async fn signup(
 pub fn Signup(
     action: Action<Signup, Result<(), ServerFnError>>,
 ) -> impl IntoView {
+    // Get invite from URL
+    let params = use_params_map();
+    let invite = params.with(|p| p.get("invite").cloned().unwrap_or_default());
+
     view! {
         <ActionForm action=action>
             <h1>"Sign Up"</h1>
-            <label>
-                "User ID:"
-                <input
-                    type="text"
-                    placeholder="User ID"
-                    maxlength="32"
-                    name="username"
-                    class="auth-input"
-                />
-            </label>
             <br/>
             <label>
                 "Email:"
@@ -92,6 +118,9 @@ pub fn Signup(
             <label>
                 "Remember me?" <input type="checkbox" name="remember" class="auth-input"/>
             </label>
+
+            // Add invite string to request as hidden input element
+            <input hidden name="invite" prop:value=invite/>
 
             <br/>
             <button type="submit" class="button">

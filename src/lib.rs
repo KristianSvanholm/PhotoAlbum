@@ -1,9 +1,11 @@
 pub mod auth;
+pub mod session; 
 pub mod error_template;
 #[cfg(feature = "ssr")]
 pub mod state;
 #[cfg(feature = "ssr")]
 pub mod fileserv;
+pub mod db;
 pub mod app;
 pub mod components;
 

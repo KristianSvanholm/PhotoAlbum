@@ -12,8 +12,9 @@ pub struct MediaPayload {
 pub async fn upload_media_server(filename: String, bytes: Vec<u8>) -> Result<(), ServerFnError> {
     use std::fs;
     use std::path::Path;
-    use crate::app::ssr::*;
+    use crate::db::ssr::pool;
     use rand::Rng;
+    use crate::app::ssr::*;
 
     let pool = pool()?;
 

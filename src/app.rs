@@ -1,4 +1,3 @@
-use crate::auth::*;
 use leptos::*;
 use leptos_meta::*;
 use leptos_router::*;
@@ -29,12 +28,13 @@ pub mod ssr {
 
 #[component]
 pub fn App() -> impl IntoView {
+    use crate::auth::get_user;
 
     let login = create_server_action::<Login>();
     let logout = create_server_action::<Logout>();
     let signup = create_server_action::<Signup>();
 
-    let user = create_resource(
+    let user = create_local_resource(
         move || {
             (
                 login.version().get(),
@@ -50,14 +50,9 @@ pub fn App() -> impl IntoView {
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.ico"/>
         <Stylesheet id="leptos" href="/pkg/photo-album.css"/>
         <Router>
-            <main>
-                
                 //###############
 
                 <nav>
-                    <a href="/">"Family Album"</a> // TODO Set to Admin defined name
-                    <a href="upload">"Upload"</a>
-
                     <Transition fallback=move || {
                         view! { <span>"Loading..."</span> }
                     }>
@@ -66,23 +61,20 @@ pub fn App() -> impl IntoView {
                                 .map(|user| match user {
                                     Err(e) => {
                                         view! {
-                                            <a href="login">"Login"</a>
-                                            <a href="signup">"Signup"</a>
                                             <span>{format!("Login error: {}", e)}</span>
                                         }
                                             .into_view()
                                     }
                                     Ok(None) => {
-                                        view! {
-                                            <a href="login">"Login"</a>
-                                            <a href="signup">"Signup"</a>
-                                            <span>"Logged out."</span>
-                                        }
+                                        view! {}
                                             .into_view()
                                     }
                                     Ok(Some(user)) => {
                                         view! {
-                                            <a href="settings">"Settings"</a>
+                                            <a href="/">"Home"</a>
+                                            <a href="/upload">"Upload"</a>
+                                            <a href="/settings">"Settings"</a>
+                                            <a href="/admin">"Admin panel"</a>
                                             <span>
                                                 {format!("Logged in as: {} ({})", user.username, user.id)}
                                             </span>
@@ -91,31 +83,54 @@ pub fn App() -> impl IntoView {
                                     }
                                 })
                         }}
-
                     </Transition>
+                   
 
                 </nav>
-
-
+                <main>
                 //###############
 
 
                 <Routes>
                     // Route
-                    <Route path="" view=HomePage/>
-                    <Route path="upload" view=UploadPage/>
-                    <Route path="signup" view=move || view! { <Signup action=signup/> }/>
-                    <Route path="login" view=move || view! { <Login action=login/> }/>
-                    <Route
-                        path="settings"
-                        view=move || {
+                    <Route path="/" view=move || {
+                        view! {
+                            <Show 
+                                when=move || {user.get().map(|user| match user {
+                                    Ok(Some(_)) => true,
+                                    Ok(None) => false,
+                                    Err(_) => false,
+                                }).unwrap_or(false)} 
+                                fallback= move || view! { <Login action=login/> }>
+                                <Outlet/>
+                            </Show>
+                        }
+                    }>
+                        <Route path="/" view=HomePage/>
+                        <Route path="/settings" view=move || {
                             view! {
-                                <h1>"Settings"</h1>
                                 <Logout action=logout/>
                             }
+                        }/>
+                        <Route path="/upload" view=UploadPage/>
+                        <Route path="/admin" view=AdminPanel/>
+                    </Route>
+                    <Route path="/signup" view=move || {
+                        view! {
+                            <Show 
+                                when=move || {user.get().map(|user| match user {
+                                    Ok(Some(_)) => false,
+                                    Ok(None) => true,
+                                    Err(_) => true,
+                                }).unwrap_or(true)}>
+                                <Outlet/>
+                            </Show>
                         }
-                    />
+                    }>
+                        <Route path=":invite" view=move || view! { <Signup action=signup/> }/>
+                    </Route>
 
+                    <Route path="*any" view=move || view! { <h1>"Not Found"</h1> }/>
                 </Routes>
             </main>
         </Router>
@@ -142,5 +157,16 @@ fn UploadPage() -> impl IntoView {
     view! {
         <h1>Upload</h1>
         <UploadMedia></UploadMedia>
+    }
+}
+
+#[component]
+fn AdminPanel() -> impl IntoView {
+    // todo:: Probably rename to User Manager or something
+    use crate::components::invite::InvitePanel;
+
+    view! {
+        <h1>Admin panel</h1>
+        <InvitePanel/>
     }
 }
