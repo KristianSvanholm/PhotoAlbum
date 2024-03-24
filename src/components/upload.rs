@@ -1,20 +1,19 @@
 use leptos::*;
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::*;
-use futures::{executor, future, FutureExt}; // 0.3.5
+use futures::future; // 0.3.5
 
 #[derive(Debug, Clone, leptos::server_fn::serde::Serialize, leptos::server_fn::serde::Deserialize)]
 pub struct MediaPayload {
     data: Vec<(String, Vec<u8>)>
 }
 
-#[server(Upload, "/api")]
+#[server(Upload, "/api", "Cbor")]
 pub async fn upload_media_server(filename: String, bytes: Vec<u8>) -> Result<(), ServerFnError> {
     use std::fs;
     use std::path::Path;
     use crate::db::ssr::pool;
     use rand::Rng;
-    use crate::app::ssr::*;
 
     let pool = pool()?;
 
@@ -27,7 +26,7 @@ pub async fn upload_media_server(filename: String, bytes: Vec<u8>) -> Result<(),
     let uuid = Uuid::new_v4().to_string();
 
     let path = format!("./album/{}.{}", uuid, file_ext);
-    let _ = fs::write(&path, bytes)?;
+    fs::write(&path, bytes)?;
     
     sqlx::query("INSERT INTO files (id, path, uploadDate, createdDate) VALUES (?, ?, ?, ?)")
         .bind(uuid)
@@ -90,6 +89,8 @@ pub fn UploadMedia() -> impl IntoView {
     let (count, set_count) = create_signal(0);
  
     let on_change = move |ev: leptos::ev::Event| {
+            set_done(0);
+            set_count(0);
             spawn_local(async move {
                 let elem = ev.target().unwrap().unchecked_into::<HtmlInputElement>();
                 let files = elem.files();
@@ -132,14 +133,20 @@ async fn file_convert(files: Option<web_sys::FileList>) -> (MediaPayload, usize)
         data: vec!(),
     };
 
+    let mut calls = Vec::new();
     for file in files.iter() {
-
-        let bytes = gloo::file::futures::read_as_bytes(file)
+        let conversion = async move {
+            let bytes = gloo::file::futures::read_as_bytes(file)
             .await
-            .expect_throw("read file");
+            .expect_throw("Failed to read file");
+            (file.name(), bytes)
+        };
+        calls.push(conversion);
+    }
 
-        media.data.push((file.name(),bytes));
-
+    let results = future::join_all(calls).await;
+    for (filename, bytes) in results {
+        media.data.push((filename, bytes));
     }
 
     (media, files.len())
