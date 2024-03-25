@@ -49,12 +49,22 @@ pub async fn upload_media_server(filename: String, encoded_string: String) -> Re
 }
 
 async fn upload(payload: Vec<(String, String)>, set_done: WriteSignal<usize>, done_count: ReadSignal<usize> ) -> Result<(), ServerFnError>{
-    let mut calls = Vec::new(); 
-        for (filename, encoded_string) in payload {
-            calls.push(upload_wrapper(filename, encoded_string, set_done, done_count));
+    if payload.is_empty() {
+        return Err(ServerFnError::new("No files to upload".to_string()));
     }
+    
+    let mut calls = Vec::new(); 
 
-    let _results = future::join_all(calls).await;
+    for (filename, encoded_string) in payload {
+        calls.push(upload_wrapper(filename, encoded_string, set_done, done_count));
+    }   
+
+    let results = future::join_all(calls).await;
+    for result in results {
+        if let Err(e) = result {
+            return Err(e);
+        }
+    }
 
     Ok(())
 }
@@ -86,35 +96,69 @@ pub fn UploadMedia() -> impl IntoView {
     let (done_count, set_done) = create_signal(0);
     let (memory_count, set_memory) = create_signal(0);
     let (count, set_count) = create_signal(0);
- 
+
+    let (error, set_error) = create_signal(String::new());
+
     let on_change = move |ev: leptos::ev::Event| {
             set_done(0);
             set_memory(0);
+            set_error("".to_string());
             spawn_local(async move {
                 let elem = ev.target().unwrap().unchecked_into::<HtmlInputElement>();
                 let files = elem.files();
+
                 let length = files.clone().unwrap().length();
                 set_count(length);
+
                 let encoded = convert_files_to_b64(files.unwrap(), set_memory, memory_count).await;
                 set_media(encoded);
             });        
     };
 
     view! {
-        <input type="file" multiple="multiple" accept="image/png, image/gif, image/jpeg, image/tiff"
+        <input id="file_input" type="file" multiple="multiple" accept="image/png, image/gif, image/jpeg, image/tiff"
             on:change=on_change
         />
         <button on:click=move |_| {
             spawn_local(async move {
                 set_done(0);
                 match upload(media.get_untracked(), set_done, done_count).await {
-                    Ok(_) => logging::log!("OK"),
-                    Err(e) => logging::log!("{}", e),
+                    Ok(_) => 
+                    {
+                        logging::log!("OK");
+                        let input_elem = web_sys::window().unwrap().document().unwrap().get_element_by_id("file_input").unwrap().unchecked_into::<HtmlInputElement>();
+                        
+                        // Reset the input element
+                        input_elem.set_value("");
+                        // Reset the media signal
+                        set_media(Vec::new());
+                    },
+                    Err(e) => {
+                        logging::log!("{}", e);
+                        
+                        // Reset signals
+                        set_memory(0);
+                        set_count(0);
+
+                        let error_message = e.to_string().split(":").collect::<Vec<&str>>()[1].to_string();
+                        set_error(error_message);
+                    },
                 };
             });
         }>"Upload"</button>
-        <p>{ move || memory_count()} / {move || count()} files read.</p>
-        <p>{ move || done_count()} / {move || count()} finished uploading.</p>
+        <p>{ move || 
+            match count() {
+                0 => "".to_string(),
+                _ => match done_count() {
+                    0 => format!("{} / {} files read", memory_count(), count()),
+                    _ if done_count() < count() as usize => format!("{} / {} files uploaded", done_count(), count()),
+                    _ => "The files have been successfully uploaded".to_string(),
+                },
+            }
+        }
+        </p>
+
+        <p>{ move || error() }</p>
     }
 }
 
