@@ -1,4 +1,4 @@
-use leptos::*;
+use leptos::{html::Input, *};
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::*;
 use futures::future; // 0.3.5
@@ -99,6 +99,8 @@ pub fn UploadMedia() -> impl IntoView {
 
     let (error, set_error) = create_signal(String::new());
 
+    let input_ref = create_node_ref::<Input>();
+
     let on_change = move |ev: leptos::ev::Event| {
             set_done(0);
             set_memory(0);
@@ -115,42 +117,45 @@ pub fn UploadMedia() -> impl IntoView {
             });        
     };
 
+    let on_click = move |_| {
+        spawn_local(async move {
+            set_done(0);
+            set_count(memory_count.get_untracked() as u32);
+            match upload(media.get_untracked(), set_done, done_count).await {
+                Ok(_) => 
+                {
+                    logging::log!("OK");
+                    let input_elem = input_ref.get().unwrap();
+                    input_elem.set_files(None);
+                    input_elem.set_value("");
+
+                    // Reset the media signal
+                    set_media(Vec::new());
+                },
+                Err(e) => {
+                    logging::log!("{}", e);
+                    
+                    // Reset signals
+                    set_memory(0);
+                    set_count(0);
+
+                    let error_message = e.to_string().split(":").collect::<Vec<&str>>()[1].to_string();
+                    set_error(error_message);
+                },
+            };
+        });
+    };
+
     view! {
-        <input id="file_input" type="file" multiple="multiple" accept="image/png, image/gif, image/jpeg, image/tiff"
+        <input id="file_input" _ref=input_ref type="file" multiple="multiple" accept="image/png, image/gif, image/jpeg, image/tiff"
             on:change=on_change
         />
-        <button on:click=move |_| {
-            spawn_local(async move {
-                set_done(0);
-                match upload(media.get_untracked(), set_done, done_count).await {
-                    Ok(_) => 
-                    {
-                        logging::log!("OK");
-                        let input_elem = web_sys::window().unwrap().document().unwrap().get_element_by_id("file_input").unwrap().unchecked_into::<HtmlInputElement>();
-                        
-                        // Reset the input element
-                        input_elem.set_value("");
-                        // Reset the media signal
-                        set_media(Vec::new());
-                    },
-                    Err(e) => {
-                        logging::log!("{}", e);
-                        
-                        // Reset signals
-                        set_memory(0);
-                        set_count(0);
-
-                        let error_message = e.to_string().split(":").collect::<Vec<&str>>()[1].to_string();
-                        set_error(error_message);
-                    },
-                };
-            });
-        }>"Upload"</button>
+        <button on:click=on_click>"Upload"</button>
         <p>{ move || 
             match count() {
                 0 => "".to_string(),
                 _ => match done_count() {
-                    0 => format!("{} / {} files read", memory_count(), count()),
+                    0 => format!("{} / {} files ready to be uploaded", memory_count(), count()),
                     _ if done_count() < count() as usize => format!("{} / {} files uploaded", done_count(), count()),
                     _ => "The files have been successfully uploaded".to_string(),
                 },
@@ -159,6 +164,32 @@ pub fn UploadMedia() -> impl IntoView {
         </p>
 
         <p>{ move || error() }</p>
+        <div class="upload-wrapper">
+                { 
+                    move || if !media().is_empty() {
+
+                        media().iter().map(|(filename, encoded_string)| {
+                            let f = filename.clone();
+                            let e = encoded_string.clone();
+                            view! {
+                                    <div class="upload">
+                                        <img src={format!("data:image/png;base64,{}", e)}/>
+                                        <button on:click=move |_| {
+                                            let mut m = media.get_untracked();
+                                            m.retain(|(filename, _)| filename != &f);
+                                            set_media(m);
+        
+                                            set_memory(memory_count() - 1);
+        
+                                        }>"Remove"</button>
+                                    </div>
+                            }
+                        }).collect::<Vec<_>>()
+                    } else {
+                       Vec::new() 
+                    }
+                }
+        </div>
     }
 }
 
@@ -178,6 +209,8 @@ async fn convert_file_to_b64(
     memory_count: ReadSignal<usize>
 ) -> (String, String) {
     let gloo_file = gloo::file::File::from(file);
+
+
     let bytes = gloo::file::futures::read_as_bytes(&gloo_file).await.expect_throw("Failed to read file");
     let encoded_string = base64::encode(&bytes);
     set_memory(memory_count.get_untracked() + 1);
