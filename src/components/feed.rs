@@ -27,7 +27,7 @@ struct PreviousDate {
 
 //Takes a date string and image struct
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
-enum Element {
+pub enum Element {
     String(String),
     ImageDb(ImageDb),
 }
@@ -43,19 +43,19 @@ lazy_static::lazy_static! {
 //Fetch images from database
 #[server(Feed, "/api")]
 pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<ImageDb>, ServerFnError> {
+
     //DB connection
     use crate::app::ssr::*;
     let pool = pool()?; 
-
-    //Stop requests at max (Work in progress... (does not really do what i want it to do))
-    //I think we need to stop the client before it reaches here, since the infinite feed
-    //spams requests in here, which cant be good
-    if db_index as i64 > 23 {
+     
+    // Return nothing if index above limit
+    let total_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM files")
+         .fetch_one(&pool)
+         .await?;
+    if db_index as i64 > total_count {
         return Ok(vec![]);
     }
-    // let total_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM files")
-    //     .fetch_one(&pool)
-    //     .await?;
+
 
     //Fetch images in descending order
     let mut files = sqlx::query_as::<_, ImageDb>(
@@ -79,14 +79,19 @@ pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<ImageDb>, 
         img.path = base64_image;
     }
 
+    logging::log!("{} - {} - {}", db_index, count, files.len());
     Ok(files)
 }
 
 //Helper function to build the vector of images as they are requested from db
-pub async fn fetch_files_and_handle_errors(db_index: usize, count: usize) -> Vec<Element> {
+pub async fn fetch_files_and_handle_errors(db_index: usize, count: usize, ready: WriteSignal<bool>) -> Vec<Element> {
+    logging::log!("please? {}", db_index);
+
+    ready(false);
     match fetch_files(db_index, count).await {
         //Extend the current vector if ok
         Ok(files) => {
+            logging::log!("got it! {}", db_index);
              //New vector with months and years seperated
             let mut grouped_images: Vec<Element> = Vec::new();
 
@@ -94,7 +99,8 @@ pub async fn fetch_files_and_handle_errors(db_index: usize, count: usize) -> Vec
             let mut previous_date = PREVIOUS_DATE.lock().unwrap();
             let mut current_month = previous_date.month.clone();
             let mut current_year = previous_date.year.clone();
-
+            
+            let mut c: i64 = 0;
             //Iterates over sorted images and adds years and months
             for image in files {
                 let year = image.created_date[0..4].to_string();
@@ -109,10 +115,18 @@ pub async fn fetch_files_and_handle_errors(db_index: usize, count: usize) -> Vec
                     grouped_images.push(Element::String(month.to_string()));
                     current_month = month.to_string();
                 }
+                c=c+1;
                 grouped_images.push(Element::ImageDb(image));
             }     
             previous_date.month = current_month;
+
             previous_date.year = current_year;
+
+            logging::log!("total {}", c);
+
+            if c != 0 {
+                ready(true);
+            }
 
             grouped_images
         }, 
@@ -121,12 +135,11 @@ pub async fn fetch_files_and_handle_errors(db_index: usize, count: usize) -> Vec
     }
 }
 
-async fn append_imgs(y: WriteSignal<Vec<Element>>, x: ReadSignal<Vec<Element>>, additional: Vec<Element>, stop: WriteSignal<bool>) -> Vec<Element>{
-    if additional.len() == 0 {
-        stop(true);
-        return x.get_untracked();
-    }
-
+async fn append_imgs(
+        y: WriteSignal<Vec<Element>>, 
+        x: ReadSignal<Vec<Element>>, 
+        additional: Vec<Element>, 
+) -> Vec<Element> {
     let mut z = x.get_untracked(); // Get current state as mutable value
     z.extend(additional); // Extend with new images
     y(z); // Update state to new value
@@ -141,18 +154,21 @@ const FETCH_IMAGE_COUNT: usize = 10;
 //Creates an infinite feed of images
 #[component]
 pub fn infinite_feed() -> impl IntoView {
-    //Counter for what index to request form in DB
-    let (stop, set_stop) = create_signal(false);
+
+    let (ready, set_ready) = create_signal(true);
+    
     let (db_index, set_db_index) = create_signal(0);
+    
     let initImgs: Vec<Element> = vec![];
     let (images, set_images) = create_signal(initImgs);
+    
     //Signal with resource called every time the bottom is reached in infinite feed
     let _imageUpdater = create_resource(
         move || db_index.get(), 
         move |_| async move {
             append_imgs(set_images, images, fetch_files_and_handle_errors(
                         db_index.get_untracked(),
-                        FETCH_IMAGE_COUNT).await, set_stop).await
+                        FETCH_IMAGE_COUNT, set_ready).await).await
         });
 
     let el = create_node_ref::<Div>();
@@ -163,18 +179,17 @@ pub fn infinite_feed() -> impl IntoView {
     let (imageDisplayClass, set_imageDisplayClass) = create_signal("image".to_string());
     let (num, set_num) = create_signal(0);
     
-    
     // //Creates and loads infinite feed
     let _ = use_infinite_scroll_with_options(
         el,
         move |_| async move {
-            if stop.get_untracked(){
+            if !ready.get_untracked(){
                 return; // TODO:: Look into disabling the entire thing instead of just returning forever
             }
-            logging::log!("{}", stop.get_untracked());
+
             //Index counter for DB
             let newIndex = db_index.get_untracked() + FETCH_IMAGE_COUNT; 
-            logging::log!("Requesting {} more images. Index: {}", FETCH_IMAGE_COUNT, db_index.get_untracked()+FETCH_IMAGE_COUNT); 
+            logging::log!("Requesting {} more images. Index: {}", FETCH_IMAGE_COUNT, db_index.get_untracked()+FETCH_IMAGE_COUNT);
             set_db_index.set(newIndex);
         },
         UseInfiniteScrollOptions::default().distance(10.0),
