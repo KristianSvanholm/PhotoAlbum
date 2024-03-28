@@ -82,42 +82,49 @@ pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<Element>, 
 
     let mut grouped_images: Vec<Element> = Vec::new();
 
-            //Access previous date requested
-            let mut previous_date = PREVIOUS_DATE.lock().unwrap();
-            let mut current_month = previous_date.month.clone();
-            let mut current_year = previous_date.year.clone();
-            
-            let mut c: i64 = 0;
-            //Iterates over sorted images and adds years and months
-            for image in files {
-                let year = image.created_date[0..4].to_string();
-                let month = image.created_date[5..7].to_string();
-                if month != current_month || year != current_year{
-                    //Add year on change
-                    if year != current_year{
-                        grouped_images.push(Element::String(create_rw_signal(year.to_string())));
-                        current_year = year.to_string();
-                    }
-                    //Add month on change
-                    grouped_images.push(Element::String(create_rw_signal(month.to_string())));
-                    current_month = month.to_string();
-                }
-                c=c+1;
-                grouped_images.push(Element::ImageDb(create_rw_signal(image)));
-            }     
-            previous_date.month = current_month;
+    //Access previous date requested
+    let mut previous_date = PREVIOUS_DATE.lock().unwrap();
+    let mut current_month = previous_date.month.clone();
+    let mut current_year = previous_date.year.clone();
 
-            previous_date.year = current_year;
+    let mut c: i64 = 0;
+    //Iterates over sorted images and adds years and months
+    for image in files {
+        let year = image.created_date[0..4].to_string();
+        let month = image.created_date[5..7].to_string();
+        if month != current_month || year != current_year{
+            //Add year on change
+            if year != current_year{
+                grouped_images.push(Element::String(create_rw_signal(year.to_string())));
+                current_year = year.to_string();
+            }
+            //Add month on change
+            grouped_images.push(Element::String(create_rw_signal(month.to_string())));
+            current_month = month.to_string();
+        }
+        c=c+1;
+        grouped_images.push(Element::ImageDb(create_rw_signal(image)));
+    }     
+    previous_date.month = current_month;
 
-            // logging::log!("{:?}", grouped_images);
-            Ok(grouped_images)
+    previous_date.year = current_year;
 
-    // Ok(files)
+    Ok(grouped_images)
 }
 
-//Images per infinite feed request
-//(If this value is too high it seems to break infinite feed, around 10+ )
+//Images per infinite feed requst
 const FETCH_IMAGE_COUNT: usize = 10;
+
+async fn request_wrapper(db_index: usize, count: usize, ready_lock: WriteSignal<bool>) -> Vec<Element>  {
+    ready_lock(false);
+    let result = fetch_files(db_index, count).await.unwrap();
+
+    if result.len() != 0 {
+        ready_lock(true);
+    }
+
+    result
+}
 
 //Creates an infinite feed of images
 #[component]
@@ -134,7 +141,7 @@ pub fn infinite_feed() -> impl IntoView {
     let _imageUpdater = create_resource(
         move || db_index.get(), 
         move |_| async move {
-            let images = fetch_files(db_index.get_untracked(), FETCH_IMAGE_COUNT).await.unwrap();
+            let images = request_wrapper(db_index.get_untracked(), FETCH_IMAGE_COUNT, set_ready).await;
             set_images.update(|imgs| imgs.extend(images));
         });
 
