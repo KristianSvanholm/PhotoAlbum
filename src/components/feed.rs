@@ -5,8 +5,6 @@ use serde::Serialize;
 use serde::Deserialize;
 use std::fs::File;
 use std::io::Read;
-use std::sync::Mutex;
-extern crate lazy_static;
 
 //Image struct for images from DB
 #[cfg_attr(feature="ssr", derive(sqlx::FromRow))]
@@ -15,6 +13,12 @@ pub struct ImageDb {
     id: String,
     path: String,
     upload_date: String,
+    created_date: String,
+}
+
+#[cfg_attr(feature="ssr", derive(sqlx::FromRow))]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
+pub struct PrevImageDb {
     created_date: String,
 }
 
@@ -30,14 +34,6 @@ struct PreviousDate {
 pub enum Element {
     String(RwSignal<String>),
     ImageDb(RwSignal<ImageDb>),
-}
-
-//Store last fetched date as global variable
-lazy_static::lazy_static! {
-    static ref PREVIOUS_DATE: Mutex<PreviousDate> = Mutex::new(PreviousDate{
-        month: String::new(),
-        year: String::new(),
-    });
 }
 
 //Fetch images from database
@@ -82,10 +78,29 @@ pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<Element>, 
 
     let mut grouped_images: Vec<Element> = Vec::new();
 
-    //Access previous date requested
-    let mut previous_date = PREVIOUS_DATE.lock().unwrap();
-    let mut current_month = previous_date.month.clone();
-    let mut current_year = previous_date.year.clone();
+    //Check previous date to prevent duplicate dates
+    let mut prevfile: Option<PrevImageDb> = None;
+    //Prevent checking previous date on the first request
+    if db_index > 0 {
+        prevfile = Some(sqlx::query_as::<_, PrevImageDb>(
+            "SELECT createdDate AS created_date FROM files ORDER BY createdDate DESC LIMIT ? OFFSET ?;",
+        )
+        .bind(1.to_string())
+        .bind((db_index-1).to_string())
+        .fetch_one(&pool)
+        .await?);
+    }
+
+    let mut current_month = String::new();
+    let mut current_year = String::new();
+
+    //When there is a previous date
+    if prevfile.is_some() {    
+        //Access previous date requested
+        current_month = prevfile.clone().unwrap().created_date[5..7].to_string();
+        current_year = prevfile.clone().unwrap().created_date[0..4].to_string();
+        
+    }
 
     let mut c: i64 = 0;
     //Iterates over sorted images and adds years and months
@@ -105,9 +120,6 @@ pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<Element>, 
         c=c+1;
         grouped_images.push(Element::ImageDb(create_rw_signal(image)));
     }     
-    previous_date.month = current_month;
-
-    previous_date.year = current_year;
 
     Ok(grouped_images)
 }
@@ -166,7 +178,7 @@ pub fn infinite_feed() -> impl IntoView {
             logging::log!("Requesting {} more images. Index: {}", FETCH_IMAGE_COUNT, db_index.get_untracked()+FETCH_IMAGE_COUNT);
             set_db_index.set(newIndex);
         },
-        UseInfiniteScrollOptions::default().distance(10.0),
+        UseInfiniteScrollOptions::default().distance(300.0),
     );
 
     view! {
