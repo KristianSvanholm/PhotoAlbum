@@ -91,3 +91,32 @@ nav a:hover{
 .invis{
 	display:none;
 }
+
+.upload-wrapper {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: 10px;
+	width: 100vw;
+}
+
+.upload {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+
+.upload img {
+	width: 200px;
+	height: 200px;
+}
+
+.upload button {
+	width: 200px;
+	height: 30px;
+}
+
+.main {
+	min-height: 100vh;
+	height: fit-content;
+}

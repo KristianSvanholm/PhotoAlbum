@@ -155,8 +155,10 @@ fn UploadPage() -> impl IntoView {
     use crate::components::upload::UploadMedia;
 
     view! {
-        <h1>Upload</h1>
-        <UploadMedia></UploadMedia>
+        <div class="main">
+            <h1>"Upload"</h1>
+            <UploadMedia/>
+        </div>
     }
 }
 
