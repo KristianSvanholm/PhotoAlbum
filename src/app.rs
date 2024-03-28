@@ -8,6 +8,24 @@ use crate::components::{
     //topbar::TopBar
 };
 
+#[cfg(feature = "ssr")]
+pub mod ssr {
+    use crate::auth::ssr::AuthSession;
+    use leptos::*;
+    use sqlx::SqlitePool;
+
+    pub fn pool() -> Result<SqlitePool, ServerFnError> {
+        use_context::<SqlitePool>()
+            .ok_or_else(|| ServerFnError::ServerError("Pool missing.".into()))
+    }
+
+    pub fn auth() -> Result<AuthSession, ServerFnError> {
+        use_context::<AuthSession>().ok_or_else(|| {
+            ServerFnError::ServerError("Auth session missing.".into())
+        })
+    }
+}
+
 #[component]
 pub fn App() -> impl IntoView {
     use crate::auth::get_user;
@@ -126,7 +144,6 @@ fn HomePage() -> impl IntoView {
 
     view! {
         <h1>"Home"</h1>
-        // <DynamicList initial_length=5 initial_period=1/>
         <InfiniteFeed/>
 
     }
@@ -138,8 +155,10 @@ fn UploadPage() -> impl IntoView {
     use crate::components::upload::UploadMedia;
 
     view! {
-        <h1>Upload</h1>
-        <UploadMedia></UploadMedia>
+        <div class="main">
+            <h1>"Upload"</h1>
+            <UploadMedia/>
+        </div>
     }
 }
 
