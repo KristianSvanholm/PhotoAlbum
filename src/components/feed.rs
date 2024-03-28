@@ -28,8 +28,8 @@ struct PreviousDate {
 //Takes a date string and image struct
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
 pub enum Element {
-    String(String),
-    ImageDb(ImageDb),
+    String(RwSignal<String>),
+    ImageDb(RwSignal<ImageDb>),
 }
 
 //Store last fetched date as global variable
@@ -42,7 +42,7 @@ lazy_static::lazy_static! {
 
 //Fetch images from database
 #[server(Feed, "/api")]
-pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<ImageDb>, ServerFnError> {
+pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<Element>, ServerFnError> {
 
     //DB connection
     use crate::app::ssr::*;
@@ -79,21 +79,8 @@ pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<ImageDb>, 
         img.path = base64_image;
     }
 
-    logging::log!("{} - {} - {}", db_index, count, files.len());
-    Ok(files)
-}
 
-//Helper function to build the vector of images as they are requested from db
-pub async fn fetch_files_and_handle_errors(db_index: usize, count: usize, ready: WriteSignal<bool>) -> Vec<Element> {
-    logging::log!("please? {}", db_index);
-
-    ready(false);
-    match fetch_files(db_index, count).await {
-        //Extend the current vector if ok
-        Ok(files) => {
-            logging::log!("got it! {}", db_index);
-             //New vector with months and years seperated
-            let mut grouped_images: Vec<Element> = Vec::new();
+    let mut grouped_images: Vec<Element> = Vec::new();
 
             //Access previous date requested
             let mut previous_date = PREVIOUS_DATE.lock().unwrap();
@@ -108,43 +95,24 @@ pub async fn fetch_files_and_handle_errors(db_index: usize, count: usize, ready:
                 if month != current_month || year != current_year{
                     //Add year on change
                     if year != current_year{
-                        grouped_images.push(Element::String(year.to_string()));
+                        grouped_images.push(Element::String(create_rw_signal(year.to_string())));
                         current_year = year.to_string();
                     }
                     //Add month on change
-                    grouped_images.push(Element::String(month.to_string()));
+                    grouped_images.push(Element::String(create_rw_signal(month.to_string())));
                     current_month = month.to_string();
                 }
                 c=c+1;
-                grouped_images.push(Element::ImageDb(image));
+                grouped_images.push(Element::ImageDb(create_rw_signal(image)));
             }     
             previous_date.month = current_month;
 
             previous_date.year = current_year;
 
-            logging::log!("total {}", c);
+            // logging::log!("{:?}", grouped_images);
+            Ok(grouped_images)
 
-            if c != 0 {
-                ready(true);
-            }
-
-            grouped_images
-        }, 
-        //Returns the incoming vector, e.g. if the there are no more images in db
-        Err(_) => vec![],
-    }
-}
-
-async fn append_imgs(
-        y: WriteSignal<Vec<Element>>, 
-        x: ReadSignal<Vec<Element>>, 
-        additional: Vec<Element>, 
-) -> Vec<Element> {
-    let mut z = x.get_untracked(); // Get current state as mutable value
-    z.extend(additional); // Extend with new images
-    y(z); // Update state to new value
-    x.get_untracked() // Return new list
-    //logging::log!("{}, {} - {} | {}", old.len(), additional.len(), i, x.get_untracked().len());
+    // Ok(files)
 }
 
 //Images per infinite feed request
@@ -166,9 +134,8 @@ pub fn infinite_feed() -> impl IntoView {
     let _imageUpdater = create_resource(
         move || db_index.get(), 
         move |_| async move {
-            append_imgs(set_images, images, fetch_files_and_handle_errors(
-                        db_index.get_untracked(),
-                        FETCH_IMAGE_COUNT, set_ready).await).await
+            let images = fetch_files(db_index.get_untracked(), FETCH_IMAGE_COUNT).await.unwrap();
+            set_images.update(|imgs| imgs.extend(images));
         });
 
     let el = create_node_ref::<Div>();
@@ -212,21 +179,20 @@ pub fn infinite_feed() -> impl IntoView {
             }>{name}</button>
         <div class="flowdiv" node_ref=el> //class="flowdiv"
             <For each=move || images.get() key=|i| i.clone() let:item>
-
-            { match item{
-                //Image
-                Element::ImageDb(ref img) => {
-                    view!{
-                    <div class={move || imageDisplayClass.get()}>
-                    <img src={format!("data:image/jpeg;base64,{}", img.path)} alt="Base64 Image" class="image imageSmooth" />
-                    </div>
-                }},
-                //Date
+                { match item{
+                    //Image
+                    Element::ImageDb(ref img) => {
+                        view!{
+                            <div class={move || imageDisplayClass.get()}>
+                            <img src={format!("data:image/jpeg;base64,{}", img.get().path)} alt="Base64 Image" class="image imageSmooth" />
+                            </div>
+                    }},
+                    //Date
                 Element::String(ref date) => {
                     let date_clone = date.clone(); //Allow str to reach all the way in
                     view!{
                     <div class={move || feedDisplayClass.get()}>{
-                        match date_clone.parse().unwrap() {
+                        match date_clone.get().parse().unwrap() {
                             1 => "January".to_string(),
                             2 => "February".to_string(),
                             3 => "March".to_string(),
@@ -239,13 +205,12 @@ pub fn infinite_feed() -> impl IntoView {
                             10 => "October".to_string(),
                             11 => "November".to_string(),
                             12 => "December".to_string(),
-                            _ => date_clone
+                            _ => date_clone.get()
                         }
                     }</div>
-                }}  
+                }}
             }}
-            </For> 
+            </For>
         </div>
     }
 }
-
