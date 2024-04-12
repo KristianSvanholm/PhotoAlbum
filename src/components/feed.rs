@@ -183,8 +183,9 @@ pub fn infinite_feed() -> impl IntoView {
 
     view! {
         <div class="feedContainer">
+        <div class="flowdiv" node_ref=el>
         //Change display of feed
-        <div class="feedSettings">
+        <div class="feedSettings break">
         <button id="displayFeed" on:click=move |_| {
             if num.get() == 0 {
                 set_name("fas fa-list".to_string());
@@ -198,8 +199,7 @@ pub fn infinite_feed() -> impl IntoView {
                 set_num(0);
             }
             }><i class={name}></i></button>
-            </div>
-        <div class="flowdiv" node_ref=el>
+        </div>
             <For each=move || images.get() key=|i| i.clone() let:item>
                 { match item{
                     //Image

@@ -7,6 +7,7 @@ body {
 	overflow-x: hidden; //Remove minor left-right scroll 
 }
 
+//Navigation bar at the top
 nav {
 	width: 100%;
 	height: 50px;
@@ -17,63 +18,86 @@ nav {
 	padding-left: 10px;
 }
 
+//Default button layout
+button {
+	color: white;
+	background-color: rgb(44, 44, 131);
+	font-size: 18px;
+	border: 0px;
+	border-radius: 5px;
+	text-align: center;
+	padding-left: 10px;
+	padding-right: 10px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    transition: background-color 0.3s ease;
+}
+
+button:hover{
+	background-color: rgb(101, 101, 158);
+}
+
+//Container for navigation bar at the top
 .topbarNav{
 	padding: 15px;
 }
 
+//Navigation bar at the top of the page
 .topbarLink {
 	color: white;
-	text-decoration: none;
+	background-color: rgb(44, 44, 131);
 	font-size: 18px;
-	padding-top:15px;
-	min-width: 80px;
-	margin-right: 10px;
 	border: 0px;
 	border-radius: 5px;
-	background-color: gray;
 	text-align: center;
 	padding-left: 10px;
 	padding-right: 10px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+	text-decoration: none;
+	padding-top:15px;
+	min-width: 80px;
+	margin-right: 10px;
+    transition: background-color 0.3s ease;
 }
 
 
 .topbarLink:hover{
-	background-color: rgb(157, 157, 157);
+	background-color: rgb(101, 101, 158);
 }
 
+//Container for all feed elements
 .feedContainer{
 	padding: 10px;
 }
 
-.feedSetting{
+//Container of feed settings, e.g. #displayFeed button
+.feedSettings{
 	margin: 10px;
+	margin-bottom: 20px;
 }
 
+//Date or smooth feed button
 #displayFeed{
-	display: inline-block;
     padding: 10px 20px;
     font-size: 24px;
     font-weight: bold;
-    color: #ffffff;
-    background-color: rgb(171, 171, 171);
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    transition: background-color 0.3s ease;
 	float: right;
 	margin-right: 15px;
-	
 }
 
 #displayFeed:hover{
-    background-color: rgb(119, 112, 160);
+    background-color: rgb(94, 94, 134)
 }
 
+//Images in feed
 .image img{
 	height: 270px;
 	width:100%;
 }
 
+//Smooth display of images
 .imageSmooth {
 	flex-grow: 1;
 	max-height: 550px;
@@ -81,18 +105,19 @@ nav {
   	object-fit:cover;
 }
 
-  //Infinite scroll
+  //Infinite scroll div
 .flowdiv{
 	display: flex; 
 	flex-wrap: wrap; 
 	gap: 5px;
 	width: 100%;
-	height: 80vh;
+	height: 87vh;
     min-height:70vh;
 	overflow-y:auto;
 	padding-right:10px;
 }
   
+//Custom scrollbar for feed
 .flowdiv::-webkit-scrollbar {
     width: 1em;
 }
@@ -108,11 +133,13 @@ nav {
   border-radius: 10px;
 }
 
+//Implement "break" class for a "newline" functionality in the smooth feed
 .break {
 	flex-basis: 100%;
 	height: 25px;
 }
 
+//Title of dates in date feed
 .date_title{
 	font-family: 'Source Sans Pro', sans-serif; 
 	font-size: 22px; 
@@ -120,10 +147,12 @@ nav {
 	line-height: 32px; 
 }
 
+//Invisible element (you could have figured this one out without this comment)
 .invis{
 	display:none;
 }
 
+//Upload
 .upload-wrapper {
 	display: flex;
 	flex-direction: row;
