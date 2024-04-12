@@ -160,7 +160,7 @@ pub fn infinite_feed() -> impl IntoView {
     let el = create_node_ref::<Div>();
 
     //Change feed display variables (smooth/date)
-    let (name, set_name) = create_signal("Smooth feed".to_string());
+    let (name, set_name) = create_signal("fas fa-th".to_string());
     let (feedDisplayClass, set_feedDisplayClass) = create_signal("break date_title".to_string());
     let (imageDisplayClass, set_imageDisplayClass) = create_signal("image".to_string());
     let (num, set_num) = create_signal(0);
@@ -182,21 +182,24 @@ pub fn infinite_feed() -> impl IntoView {
     );
 
     view! {
+        <div class="feedContainer">
         //Change display of feed
-        <button on:click=move |_| {
+        <div class="feedSettings">
+        <button id="displayFeed" on:click=move |_| {
             if num.get() == 0 {
-                set_name("Date feed".to_string());
+                set_name("fas fa-list".to_string());
                 set_feedDisplayClass("invis".to_string());
                 set_imageDisplayClass("image imageSmooth".to_string());
                 set_num(1);
             } else {
-                set_name("Smooth feed".to_string());
+                set_name("fas fa-th".to_string());
                 set_feedDisplayClass("break date_title".to_string());
                 set_imageDisplayClass("image".to_string());
                 set_num(0);
             }
-            }>{name}</button>
-        <div class="flowdiv" node_ref=el> //class="flowdiv"
+            }><i class={name}></i></button>
+            </div>
+        <div class="flowdiv" node_ref=el>
             <For each=move || images.get() key=|i| i.clone() let:item>
                 { match item{
                     //Image
@@ -230,6 +233,7 @@ pub fn infinite_feed() -> impl IntoView {
                 }}
             }}
             </For>
+        </div>
         </div>
     }
 }

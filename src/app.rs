@@ -48,11 +48,12 @@ pub fn App() -> impl IntoView {
 
     view! {
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.ico"/>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
         <Stylesheet id="leptos" href="/pkg/photo-album.css"/>
         <Router>
                 //###############
 
-                <nav>
+                <nav class="topbarNav">
                     <Transition fallback=move || {
                         view! { <span>"Loading..."</span> }
                     }>
@@ -71,11 +72,11 @@ pub fn App() -> impl IntoView {
                                     }
                                     Ok(Some(user)) => {
                                         view! {
-                                            <a href="/">"Home"</a>
-                                            <a href="/upload">"Upload"</a>
-                                            <a href="/settings">"Settings"</a>
-                                            <a href="/admin">"Admin panel"</a>
-                                            <span>
+                                            <a class="topbarLink" href="/">"Home"</a>
+                                            <a class="topbarLink" href="/upload">"Upload"</a>
+                                            <a class="topbarLink" href="/settings">"Settings"</a>
+                                            <a class="topbarLink" href="/admin">"Admin panel"</a>
+                                            <span class="loggedin">
                                                 {format!("Logged in as: {} ({})", user.username, user.id)}
                                             </span>
                                         }
@@ -143,9 +144,7 @@ fn HomePage() -> impl IntoView {
     use crate::components::feed::InfiniteFeed;
 
     view! {
-        <h1>"Home"</h1>
         <InfiniteFeed/>
-
     }
 }
 
