@@ -5,6 +5,8 @@ use serde::Serialize;
 use serde::Deserialize;
 use std::fs::File;
 use std::io::Read;
+#[cfg(feature = "ssr")]
+use crate::auth;
 
 //Image struct for images from DB
 #[cfg_attr(feature="ssr", derive(sqlx::FromRow))]
@@ -39,6 +41,11 @@ pub enum Element {
 //Fetch images from database
 #[server(Feed, "/api")]
 pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<Element>, ServerFnError> {
+    if auth::get_user().await?.is_none(){
+        return Err(ServerFnError::ServerError(
+            "You are not logged in".to_string(),
+        ))
+    }
 
     //DB connection
     use crate::app::ssr::*;

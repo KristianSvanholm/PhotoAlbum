@@ -2177,6 +2177,7 @@ dependencies = [
  "bcrypt",
  "console_error_panic_hook",
  "console_log",
+ "cookie",
  "futures",
  "futures-locks",
  "gloo",
