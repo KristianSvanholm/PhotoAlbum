@@ -2,6 +2,8 @@ use leptos::{html::Input, *};
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::*;
 use futures::future; // 0.3.5
+#[cfg(feature = "ssr")]
+use crate::auth;
 
 #[derive(Debug, Clone, leptos::server_fn::serde::Serialize, leptos::server_fn::serde::Deserialize)]
 pub struct MediaPayload {
@@ -10,6 +12,7 @@ pub struct MediaPayload {
 
 #[server(Upload, "/api", "Cbor")]
 pub async fn upload_media_server(filename: String, encoded_string: String) -> Result<(), ServerFnError> {
+    let user = auth::logged_in().await?;
     use std::fs;
     use std::path::Path;
     use crate::db::ssr::pool;
@@ -30,10 +33,10 @@ pub async fn upload_media_server(filename: String, encoded_string: String) -> Re
 
     fs::write(&path, bytes).expect_throw("Failed to write file");
     
-    sqlx::query("INSERT INTO files (id, path, uploadDate, createdDate) VALUES (?, ?, ?, ?)")
+    sqlx::query("INSERT INTO files (id, path, uploadDate, createdDate, uploadedBy) 
+        VALUES (?, ?, datetime('now', 'localtime'), ?, ?)") //SELECT date('now', 'localtime');
         .bind(uuid)
         .bind(path)
-        .bind("fake_timestamp".to_string())
         //Randomize data for testing
         .bind(format!(
             "{}-{:02}-{:02}",
@@ -41,6 +44,7 @@ pub async fn upload_media_server(filename: String, encoded_string: String) -> Re
             rand::thread_rng().gen_range(1..13),
             rand::thread_rng().gen_range(1..29),
         ).to_string())
+        .bind(user.id)
         .execute(&pool)
         .await?;
 

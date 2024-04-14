@@ -3,7 +3,9 @@ use leptos::html::Div;
 use leptos_use::{UseInfiniteScrollOptions, use_infinite_scroll_with_options};
 use serde::Serialize;
 use serde::Deserialize;
+#[cfg(feature = "ssr")]
 use std::fs::File;
+#[cfg(feature = "ssr")]
 use std::io::Read;
 #[cfg(feature = "ssr")]
 use crate::auth;
@@ -41,11 +43,7 @@ pub enum Element {
 //Fetch images from database
 #[server(Feed, "/api")]
 pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<Element>, ServerFnError> {
-    if auth::get_user().await?.is_none(){
-        return Err(ServerFnError::ServerError(
-            "You are not logged in".to_string(),
-        ))
-    }
+    auth::logged_in().await?;
 
     //DB connection
     use crate::app::ssr::*;
@@ -58,7 +56,6 @@ pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<Element>, 
     if db_index as i64 > total_count {
         return Ok(vec![]);
     }
-
 
     //Fetch images in descending order
     let mut files = sqlx::query_as::<_, ImageDb>(

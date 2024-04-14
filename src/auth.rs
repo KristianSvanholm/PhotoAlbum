@@ -47,7 +47,7 @@ pub mod ssr {
     }
 
     impl User {
-        pub async fn has(&self, perm: &str) -> bool {
+        pub fn has(&self, perm: &str) -> bool {
             self.permissions.contains(perm)
         }
     }
@@ -209,4 +209,28 @@ pub async fn get_user() -> Result<Option<User>, ServerFnError> {
     use ssr::auth;
     let auth = auth()?;
     Ok(auth.user.map_or(None, |u| Some(u.into_user())))
+}
+
+#[cfg(feature = "ssr")]
+pub async fn logged_in() -> Result<User, ServerFnError> {
+    let user = get_user().await?;
+    match user{
+        None => {
+            Err(ServerFnError::ServerError(
+                "You are not logged in".to_string(),
+            ))
+        }
+        Some(user)=>Ok(user)
+    }
+}
+
+#[cfg(feature = "ssr")]
+pub async fn authorized(permission: &str) -> Result<User, ServerFnError> {
+    let user = logged_in().await?;
+    if !user.has(permission){
+        return Err(ServerFnError::ServerError(
+            "You are not authorized".to_string(),
+        ))
+    }
+    Ok(user)
 }
