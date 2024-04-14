@@ -23,7 +23,7 @@ use photo_album::{
     state::AppState,
     app::*,
 };
-use sqlx::{sqlite::SqlitePoolOptions};
+use sqlx::sqlite::SqlitePoolOptions;
 
 async fn server_fn_handler(
     State(app_state): State<AppState>,
@@ -66,25 +66,14 @@ async fn leptos_routes_handler(
 pub async fn build_app() -> Router{
     use photo_album::fileserv::file_and_error_handler;
     use photo_album::session::session_expiry::session_expiry_manager;
-    use std::fs::File;
-
-    simple_logger::init_with_level(log::Level::Info)
-        .expect("couldn't initialize logging");
-
-    let _ = File::create("test_database.db");
 
     let pool = SqlitePoolOptions::new()
         .connect("sqlite:test_database.db")
         .await
         .expect("Could not make pool.");
 
-    // Auth section
     let session_store = SqliteStore::new(pool.clone());
-        session_store.migrate().await.unwrap();
-
-    if let Err(e) = sqlx::migrate!().run(&pool).await {
-        eprintln!("{e:?}");
-    }
+    session_store.migrate().await.unwrap();
 
     // Setting this to None means we'll be using cargo-leptos and its env vars
     let conf = get_configuration(None).await.unwrap();

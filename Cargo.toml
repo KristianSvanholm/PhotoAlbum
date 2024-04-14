@@ -45,6 +45,7 @@ time = { version = "0.3.30",  optional = true }
 [dev-dependencies]
 axum-test = "14.8.0"
 serde_json = "1.0.115"
+futures-locks = "0.7.1"
 
 [features]
 default = ["ssr"]
