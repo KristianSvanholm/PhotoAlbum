@@ -87,43 +87,36 @@ pub fn Signup(
     let invite = params.with(|p| p.get("invite").cloned().unwrap_or_default());
 
     view! {
-        <ActionForm action=action>
-            <h1>"Sign Up"</h1>
+        <ActionForm action=action class="signupForm">
+            <h1>"Sign up for the photo album:"</h1>
             <br/>
-            <label>
-                "Email:"
-                <input
-                    type="text"
-                    placeholder="Email"
-                    name="email"
-                    class="auth-input"
-                />
-            </label>
+            <input
+                type="text"
+                placeholder="Email"
+                name="email"
+            />
             <br/>
-            <label>
-                "Password:"
-                <input type="password" placeholder="Password" name="password" class="auth-input"/>
-            </label>
+            <input 
+                type="password" 
+                placeholder="Password" 
+                name="password"
+            />
             <br/>
-            <label>
-                "Confirm Password:"
-                <input
-                    type="password"
-                    placeholder="Password again"
-                    name="password_confirmation"
-                    class="auth-input"
-                />
-            </label>
+            <input
+                type="password"
+                placeholder="Password again"
+                name="password_confirmation"
+            />
             <br/>
-            <label>
-                "Remember me?" <input type="checkbox" name="remember" class="auth-input"/>
+            <label class="rememberLabel">
+                <input type="checkbox" name="remember" class="rememberCheckbox"/>"Remember me?"
             </label>
 
             // Add invite string to request as hidden input element
             <input hidden name="invite" prop:value=invite/>
 
             <br/>
-            <button type="submit" class="button">
+            <button type="submit" class="signupButton">
                 "Sign Up"
             </button>
         </ActionForm>

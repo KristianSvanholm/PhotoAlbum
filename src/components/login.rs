@@ -42,30 +42,28 @@ pub fn Login(
     action: Action<Login, Result<(), ServerFnError>>,
 ) -> impl IntoView {
     view! {
-        <ActionForm action=action>
-            <h1>"Log In"</h1>
-            <label>
-                "User ID:"
-                <input
-                    type="text"
-                    placeholder="User ID"
-                    maxlength="32"
-                    name="username"
-                    class="auth-input"
-                />
-            </label>
+        <ActionForm action=action class="loginForm">
+            <h1>"Log in to the photo album:"</h1>
+
+            <input
+                type="text"
+                placeholder="User ID"
+                maxlength="32"
+                name="username"
+            />
             <br/>
-            <label>
-                "Password:"
-                <input type="password" placeholder="Password" name="password" class="auth-input"/>
-            </label>
+            <input 
+                type="password" 
+                placeholder="Password" 
+                name="password" 
+            />
             <br/>
-            <label>
-                <input type="checkbox" name="remember" class="auth-input"/>
+            <label class="rememberLabel">
+                <input type="checkbox" name="remember" class="rememberCheckbox"/>
                 "Remember me?"
             </label>
             <br/>
-            <button type="submit" class="button">
+            <button type="submit" class="loginButton">
                 "Log In"
             </button>
         </ActionForm>
