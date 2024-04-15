@@ -104,7 +104,7 @@ pub fn Signup(
             <br/>
             <input
                 type="password"
-                placeholder="Password again"
+                placeholder="Confirm password"
                 name="password_confirmation"
             />
             <br/>
