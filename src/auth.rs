@@ -8,6 +8,7 @@ pub struct User {
     pub username: String,
     pub email: String,
     pub permissions: HashSet<String>,
+    pub admin: bool,
 }
 
 impl Default for User {
@@ -19,6 +20,7 @@ impl Default for User {
             username: "Guest".into(),
             email: "".into(),
             permissions,
+            admin: false,
         }
     }
 }
@@ -198,7 +200,8 @@ pub mod ssr {
                     .collect::<HashSet<String>>()
                 } else {
                     HashSet::<String>::new()
-                }
+                },
+                admin: self.admin
             }
         }
     }

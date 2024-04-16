@@ -43,7 +43,7 @@ pub fn Login(
 ) -> impl IntoView {
     view! {
         <ActionForm action=action class="loginForm">
-            <h1>"Log in to the photo album:"</h1>
+            <h1>"Sign in to the photo album:"</h1>
 
             <input
                 type="text"
@@ -64,7 +64,7 @@ pub fn Login(
             </label>
             <br/>
             <button type="submit" class="loginButton">
-                "Log In"
+                "Sign In"
             </button>
         </ActionForm>
     }
