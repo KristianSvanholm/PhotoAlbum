@@ -152,11 +152,14 @@ fn HomePage() -> impl IntoView {
 fn UploadPage() -> impl IntoView {
 
     use crate::components::upload::UploadMedia;
+    use crate::components::dialog::Dialog;
 
     view! {
         <div class="main">
-            <h1>"Upload"</h1>
-            <UploadMedia/>
+            <Dialog>
+                <h1>"Upload"</h1>
+                <UploadMedia/>
+            </Dialog>
         </div>
     }
 }

@@ -182,6 +182,11 @@ pub fn infinite_feed() -> impl IntoView {
     );
 
     view! {
+        <button
+            class = "floating displayFeed"
+            on:click=move |_| {
+                println!("HI"); 
+            }><i class="fas fa-plus"></i></button>
         <div class="feedContainer">
         <div class="flowdiv" node_ref=el>
         //Change display of feed
