@@ -1,15 +1,14 @@
 /* The Modal (background) */
 .modal {
-    $overlay-color: rgba(0,0,0,0.4);
-    $background-color: #6b5f5f;
-    $border-color: #888;
-    $close-color: #aaaaaa;
-    $close-focus-color: #000;
+    $overlay-color: rgba(0,0,0,0.3);
+    $background-color: rgba(211,206,202,255);
+    $close-color: rgba(182,80,6,255);
+    $close-focus-color: rgba(196,76,51,255);
 
-    display: block; /* Hidden by default */
+    display: block; /* Hidden by default */                     
     position: fixed; /* Stay in place */
     z-index: 1; /* Sit on top */
-    padding-top: 100px; /*Location of the box (Header + padding)*/
+    padding-top: 80px; /*Location of the box (50px header+ 2*15px padding header)*/
     left: 0;
     top: 0;
     width: 100%; /* Full width */
@@ -21,10 +20,17 @@
     .modal-content {
         background-color: $background-color;
         margin: auto;
+        margin-top: 30px;
         padding: 20px;
-        border: 1px solid $border-color;
         width: 80%;
         border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        max-height: calc(90% - 110px);/*maximum 90% under header*/
+        overflow-y: auto;
+    }
+
+    .modal-content::-webkit-scrollbar-thumb {
+        z-index: 5; /* Sit on top */
     }
 
     /* The Close Button */
