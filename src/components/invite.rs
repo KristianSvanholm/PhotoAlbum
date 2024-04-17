@@ -149,7 +149,6 @@ pub fn InvitePanel() -> impl IntoView {
         })
     };
 
-    let invite_ref = create_node_ref::<Input>();
 
     view! {
         <Suspense fallback=move || view! {<p>"Loading users"</p>}>
@@ -163,6 +162,7 @@ pub fn InvitePanel() -> impl IntoView {
                                 {y.into_iter()
                                     .map(|user| move || {
                                         let u = user.clone();
+                                        let invite_ref = create_node_ref::<Input>();
                                         view! {
                                             <div class="user-item">
                                             <p>{&user.username}</p>
