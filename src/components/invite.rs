@@ -13,6 +13,7 @@ pub struct UserInfo {
     pub username: String,
     pub email: String,
     pub signed_up: bool,
+    pub admin: bool,
 }
 
 #[server(GetUserList, "/api")]
@@ -21,7 +22,7 @@ pub async fn get_user_list() -> Result<Vec<UserInfo>, ServerFnError> {
     use crate::db::ssr::pool;
     let pool = pool()?;
     let users =sqlx::query_as::<_, UserInfo>(
-            "SELECT id, username, email, signed_up FROM users"
+            "SELECT id, username, email, signed_up, admin FROM users"
         ).fetch_all(&pool)
         .await?;
 
@@ -107,6 +108,21 @@ pub async fn make_user_admin(id: i64) -> Result<(), ServerFnError>{
     Ok(())
 }
 
+#[server(DeleteUser,"/api")]
+pub async fn delete_user(username: String) -> Result<(), ServerFnError>{
+    use crate::db::ssr::pool;
+
+    let pool = pool()?;
+
+    sqlx::query("DELETE FROM users WHERE username = ?")
+        .bind(username)
+        .execute(&pool)
+        .await?;
+
+    Ok(())
+}
+
+
 
 #[component]
 pub fn InvitePanel() -> impl IntoView {
@@ -117,8 +133,23 @@ pub fn InvitePanel() -> impl IntoView {
     let create_user = move |_| { spawn_local(async move {
         let node = new_user_input.get_untracked().expect("create user should be loaded by now.");
         create_user(node.value()).await.unwrap();
+        users.refetch();
         })
     };
+
+    let delete_user = move |username: String| { spawn_local(async move {
+        delete_user(username).await.unwrap();
+        users.refetch();
+        })
+    };
+
+    let make_user_admin = move |id: i64| { spawn_local(async move {
+        make_user_admin(id).await.unwrap();
+        users.refetch();
+        })
+    };
+
+    let invite_ref = create_node_ref::<Input>();
 
     view! {
         <Suspense fallback=move || view! {<p>"Loading users"</p>}>
@@ -127,30 +158,66 @@ pub fn InvitePanel() -> impl IntoView {
                     users.get().map(move |x|{
                        x.map(move |y| {
                             view! {
-                                <ul>
-                                    {y.into_iter()
-                                        .map(|user| view! {
-                                            <li>{user.username}</li>
-                                            <Show when=move || !user.signed_up>
+                                <div class="userlist">
+                                <button on:click=move |_|{users.refetch()} style="width: 200px;"> "Refresh Userlist" </button>
+                                {y.into_iter()
+                                    .map(|user| move || {
+                                        let u = user.clone();
+                                        view! {
+                                            <div class="user-item">
+                                            <p>{&user.username}</p>
+                                        
+                                            <div class="buttons">
+                                                <Show when=move || !user.signed_up>
+                                                    <button on:click=move |_|{
+                                                        spawn_local(async move {
+                                                            let token = invite(user.id).await.unwrap(); 
+                                                            let origin = window().location().origin().unwrap_or_default();
+                                                            let invite_link = origin+&token;
+                                                            invite_ref.get_untracked().unwrap().set_value(&invite_link);
+                                                        })}> "Invite" </button>
+                                                    <input 
+                                                        type="text"
+                                                        placeholder="Invite link"
+                                                        name="invite"
+                                                        class="auth-input"
+                                                        readonly
+                                                        _ref=invite_ref
+                                                    />
+                                                </Show>
+                                        
+                                                <Show when=move || (user.signed_up && !user.admin)>
+                                                    <button on:click=move |_|{
+                                                        make_user_admin(u.id);
+                                                    }> "Make admin" </button>
+                                                </Show>
+                                        
                                                 <button on:click=move |_|{
-                                                    spawn_local(async move {
-                                                        let token = invite(user.id).await.unwrap(); 
-                                                        let origin = window().location().origin().unwrap_or_default();
-                                                        logging::log!("{}", token);
-                                                        let url = origin+&token;
-                                                        logging::log!("{}", url);
-                                                })}> "invite" </button>
-                                            </Show>})
-                                        .collect_view()}
-                                </ul>
+                                                    let username = u.username.clone();
+                                                    if username != "admin"{ // Impossible to delete the first admin
+                                                        delete_user(username);
+                                                        users.refetch();
+                                                    } else {
+                                                        logging::log!("Cannot delete admin");
+                                                    }
+                                                }> "Delete" </button>
+                                            </div>
+                                        </div>
+                                        }
+                                    })
+                                    .collect_view()}
+                            </div>
+                            <br/>
+                            <div>
                                 <input 
                                     type="text"
-                                    placeholder="New users name"
+                                    placeholder="New user's name"
                                     name="username"
                                     class="auth-input"
                                     _ref=new_user_input
                                 />
                                 <button on:click=create_user>"Create new user"</button>
+                            </div>
                             }               
                         }) 
                     })

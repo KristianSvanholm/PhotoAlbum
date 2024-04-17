@@ -1,6 +1,7 @@
-use leptos::*;
+use leptos::{html::{Nav, ToHtmlElement}, *};
 use leptos_meta::*;
 use leptos_router::*;
+use leptos_use::use_event_listener;
 use crate::components::{
     login::Login, 
     logout::Logout, 
@@ -29,6 +30,7 @@ pub mod ssr {
 #[component]
 pub fn App() -> impl IntoView {
     use crate::auth::get_user;
+    use leptos::ev::click;
 
     let login = create_server_action::<Login>();
     let logout = create_server_action::<Logout>();
@@ -44,6 +46,24 @@ pub fn App() -> impl IntoView {
         },
         move |_| get_user(),
     );
+
+    let navref: leptos::NodeRef<Nav> = create_node_ref();
+    
+    let _ = use_event_listener(navref, click, move |ev| {
+        let target = event_target::<web_sys::HtmlAnchorElement>(&ev).to_leptos_element();
+        if Some(target.tag_name()) != Some("A".to_string()) {
+            return;
+        }
+        let _ = target.class_list().add_1("active");        
+        let nav = navref.get_untracked().unwrap().children();
+        for i in 0..nav.length() {
+            let link = nav.get_with_index(i).unwrap().to_leptos_element();
+            if Some(link.text_content()) != Some(target.text_content()) {
+                let _ = link.class_list().remove_1("active");
+            }
+        }
+    });
+
     provide_meta_context();
 
     view! {
@@ -52,8 +72,7 @@ pub fn App() -> impl IntoView {
         <Stylesheet id="leptos" href="/pkg/photo-album.css"/>
         <Router>
                 //###############
-
-                <nav class="topbarNav">
+                <nav class="topbarNav" node_ref=navref>
                     <Transition fallback=move || {
                         view! { <span>"Loading..."</span> }
                     }>
@@ -71,22 +90,36 @@ pub fn App() -> impl IntoView {
                                             .into_view()
                                     }
                                     Ok(Some(user)) => {
-                                        view! {
-                                            <a class="topbarLink" href="/">"Home"</a>
-                                            <a class="topbarLink" href="/upload">"Upload"</a>
-                                            <a class="topbarLink" href="/settings">"Settings"</a>
-                                            <a class="topbarLink" href="/admin">"Admin panel"</a>
-                                            <span class="loggedin">
-                                                {format!("Logged in as: {} ({})", user.username, user.id)}
-                                            </span>
+                                        if user.admin {
+                                            view! {
+                                                <a href="/" class="active">"Home"</a>
+                                                <a href="/upload">"Upload"</a>
+                                                <a href="/admin">"Admin"</a>
+                                                <ActionForm action=logout class="topbarNav-right">
+                                                    <button type="submit">"Sign Out"</button>
+                                                    <span>
+                                                    {format!("Logged in as: {}({})", user.username, user.id)}
+                                                    </span>  
+                                                </ActionForm>
+                                          }
+                                                .into_view()
+                                        } else {
+                                            view! {
+                                                <a href="/" class="active">"Home"</a>
+                                                <a href="/upload">"Upload"</a>
+                                                <ActionForm action=logout class="topbarNav-right">
+                                                    <button type="submit">"Sign Out"</button>
+                                                    <span>
+                                                    {format!("Logged in as: {}({})", user.username, user.id)}
+                                                    </span>  
+                                                </ActionForm>
+                                            }
+                                                .into_view()
                                         }
-                                            .into_view()
                                     }
                                 })
                         }}
                     </Transition>
-                   
-
                 </nav>
                 <main>
                 //###############
@@ -108,13 +141,18 @@ pub fn App() -> impl IntoView {
                         }
                     }>
                         <Route path="/" view=HomePage/>
-                        <Route path="/settings" view=move || {
+                        <Route path="/upload" view=UploadPage/>
+                        <Route path="/admin" view=move || {
                             view! {
-                                <Logout action=logout/>
+                                <Show 
+                                    when=move || {user.get().map(|user| match user {
+                                        Ok(Some(user)) => user.admin,
+                                        _ => false,
+                                    }).unwrap_or(false)}>
+                                    <AdminPanel/>
+                                </Show>
                             }
                         }/>
-                        <Route path="/upload" view=UploadPage/>
-                        <Route path="/admin" view=AdminPanel/>
                     </Route>
                     <Route path="/signup" view=move || {
                         view! {
@@ -158,7 +196,7 @@ fn UploadPage() -> impl IntoView {
     view! {
         <div class="main">
             <Dialog on_close=move || set_showing(false) open=showing>
-                <h1>"Upload"</h1>
+                <br/>
                 <UploadMedia/>
             </Dialog>
         </div>
