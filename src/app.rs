@@ -141,10 +141,10 @@ pub fn App() -> impl IntoView {
 // ===== ONLY ROUTES ======
 #[component]
 fn HomePage() -> impl IntoView {
-    use crate::components::feed::InfiniteFeed;
+    use crate::components::home_page::HomePage;
 
     view! {
-        <InfiniteFeed/>
+        <HomePage/>
     }
 }
 
