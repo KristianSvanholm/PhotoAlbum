@@ -93,7 +93,6 @@ pub fn App() -> impl IntoView {
                                         if user.admin {
                                             view! {
                                                 <a href="/" class="active">"Home"</a>
-                                                <a href="/upload">"Upload"</a>
                                                 <a href="/admin">"Admin"</a>
                                                 <ActionForm action=logout class="topbarNav-right">
                                                     <button type="submit">"Sign Out"</button>
@@ -106,7 +105,6 @@ pub fn App() -> impl IntoView {
                                         } else {
                                             view! {
                                                 <a href="/" class="active">"Home"</a>
-                                                <a href="/upload">"Upload"</a>
                                                 <ActionForm action=logout class="topbarNav-right">
                                                     <button type="submit">"Sign Out"</button>
                                                     <span>
@@ -141,7 +139,6 @@ pub fn App() -> impl IntoView {
                         }
                     }>
                         <Route path="/" view=HomePage/>
-                        <Route path="/upload" view=UploadPage/>
                         <Route path="/admin" view=move || {
                             view! {
                                 <Show 
@@ -183,23 +180,6 @@ fn HomePage() -> impl IntoView {
 
     view! {
         <HomePage/>
-    }
-}
-
-#[component]
-fn UploadPage() -> impl IntoView {
-
-    use crate::components::upload::UploadMedia;
-    use crate::components::dialog::Dialog;
-
-    let (showing, set_showing) = create_signal(true);
-    view! {
-        <div class="main">
-            <Dialog on_close=move || set_showing(false) open=showing>
-                <br/>
-                <UploadMedia/>
-            </Dialog>
-        </div>
     }
 }
 
