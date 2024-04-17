@@ -1,0 +1,78 @@
+//Container for all feed elements
+.feedContainer{
+	padding: 10px;
+}
+
+//Container of feed settings, e.g. #displayFeed button
+.feedSettings{
+	margin: 10px;
+	margin-bottom: 20px;
+}
+
+//Date or smooth feed button
+#displayFeed{
+    padding: 10px 20px;
+    font-size: 24px;
+    font-weight: bold;
+    border: none;
+	color: rgba(248,243,237,255);
+    border-radius: 5px;
+    cursor: pointer;
+	float: right;
+	margin-right: 15px;
+	
+	:hover{
+    	background-color: rgba(196,76,51,255)
+	}
+}
+
+//Images in feed
+.image img{
+	height: 270px;
+	width:100%;
+}
+
+//Smooth display of images
+.imageSmooth {
+	flex-grow: 1;
+	max-height: 550px;
+	margin-top:5px;
+  	object-fit:cover;
+}
+
+//Infinite scroll div
+.flowdiv{
+	display: flex; 
+	flex-wrap: wrap; 
+	gap: 5px;
+	width: 100%;
+	height: calc(100vh - 100px);//50px header+ 2*15px padding header+ 2*10px padding;
+    min-height:70vh;
+	overflow-y:auto;
+	padding-right:10px;
+}
+
+//Fix for stretched images (not implemented yet)
+//This is hard-coded, needs to be dynamic based on screen size (@media (max-width: 1100px) and (min-width: 1000px) 
+//   div:nth-last-child(3) ~ div{
+// 	flex-grow: 0;
+//   }
+
+//Implement "break" class for a "newline" functionality in the smooth feed
+.break {
+	flex-basis: 100%;
+	height: 25px;
+}
+
+//Title of dates in date feed
+.date_title{
+	font-family: 'Source Sans Pro', sans-serif; 
+	font-size: 22px; 
+	font-weight: bold; 
+	line-height: 32px; 
+}
+
+//Invisible element (you could have figured this one out without this comment)
+.invis{
+	display:none;
+}

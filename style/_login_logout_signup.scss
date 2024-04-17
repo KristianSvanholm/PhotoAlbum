@@ -1,0 +1,37 @@
+//Login and signup elements
+.loginForm, .signupForm {
+	text-align: center;
+	padding-top: 30px;
+}
+
+input[type="text"], input[type="password"] {
+	width: 300px;
+	font-size: 17px;
+	height: 32px;
+  	margin: 8px;
+  	border: 2px solid #cccccc;
+  	border-radius: 5px;
+}
+
+input[type="text"]:focus, input[type="password"]:focus {
+	border: 2px solid #000000;
+}
+
+.rememberLabel {
+	font-size: 17px;
+	justify-content: center;
+	display: block;
+	align-self: start;
+}
+
+.rememberCheckbox {
+	margin-top: 10px;
+	display: inline-block;
+	vertical-align: sub;
+  	width: 30px;
+  	height: 30px;
+}
+
+.loginButton, .signupButton {
+	font-size: 17px;
+}

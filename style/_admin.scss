@@ -1,0 +1,27 @@
+.userlist {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+
+.user-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center; 
+	border: 1px solid rgba(63, 68, 90, 255);
+	padding: 5px;
+}
+
+.user-item p {
+	margin-right: 10px;
+}
+
+.buttons {
+	display: flex;
+	gap: 5px;
+}
+
+.buttons button {
+	margin: 8px;
+	height: 38px;
+}

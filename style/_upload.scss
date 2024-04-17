@@ -1,0 +1,23 @@
+//Upload
+.upload-wrapper {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.upload {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+
+.upload img {
+	width: 200px;
+	height: 200px;
+}
+
+.upload button {
+	width: 200px;
+	height: 30px;
+}

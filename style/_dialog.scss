@@ -29,22 +29,17 @@
         overflow-y: auto;
     }
 
-    .modal-content::-webkit-scrollbar-thumb {
-        z-index: 5; /* Sit on top */
-    }
-
     /* The Close Button */
     .close {
         color: $close-color;
         float: right;
         font-size: 28px;
         font-weight: bold;
-    }
-
-    .close:hover,
-    .close:focus {
-        color: $close-focus-color;
-        text-decoration: none;
-        cursor: pointer;
+        &:hover,
+        &:focus {
+            color: $close-focus-color;
+            text-decoration: none;
+            cursor: pointer;
+        }
     }
 }
