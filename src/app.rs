@@ -154,9 +154,10 @@ fn UploadPage() -> impl IntoView {
     use crate::components::upload::UploadMedia;
     use crate::components::dialog::Dialog;
 
+    let (showing, set_showing) = create_signal(true);
     view! {
         <div class="main">
-            <Dialog>
+            <Dialog on_close=move || set_showing(false) open=showing>
                 <h1>"Upload"</h1>
                 <UploadMedia/>
             </Dialog>

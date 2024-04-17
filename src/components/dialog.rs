@@ -1,20 +1,22 @@
 use leptos::*;
 
 #[component]
-pub fn Dialog(
+pub fn Dialog<F>(
     /// `children` takes the `Children` type
     children: ChildrenFn,
-) -> impl IntoView
+    open: ReadSignal<bool>,
+    on_close: F) -> impl IntoView
+where
+    F: Fn() + 'static+ Clone
 {
-    let (showing, set_showing) = create_signal(true);
-
+    let close = move |_|{on_close()};
     
     view! {
-        <Show when=showing>
+        <Show when=open>
             <div class="modal">
                 <div class="modal-content">
                 <div class="close" 
-                on:click = move |_|{println!("clicked"); set_showing(false);}>
+                on:click = close.clone()>
                     <i class="fas fa-times-circle"></i>
                 </div>
                 {children().into_view()}
