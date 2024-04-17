@@ -1,3 +1,5 @@
+@use 'dialog';
+
 body {
 	font-family: sans-serif;
 	margin: 5px;
@@ -124,7 +126,7 @@ button:hover{
 	flex-wrap: wrap; 
 	gap: 5px;
 	width: 100%;
-	height: 87vh;
+	height: calc(100vh - 100px);//50px header+ 2*15px padding header+ 2*10px padding;
     min-height:70vh;
 	overflow-y:auto;
 	padding-right:10px;
@@ -136,20 +138,28 @@ button:hover{
 // 	flex-grow: 0;
 //   }
   
-//Custom scrollbar for feed
-.flowdiv::-webkit-scrollbar {
+//Custom scrollbar
+*::-webkit-scrollbar {
     width: 1em;
 }
  
-.flowdiv::-webkit-scrollbar-track {
+*::-webkit-scrollbar-track {
     -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
 	border-radius: 10px;
 }
  
-.flowdiv::-webkit-scrollbar-thumb {
+*::-webkit-scrollbar-thumb {
   background-color: rgb(189, 188, 188);
   outline: 1px solid rgb(98, 83, 83);
   border-radius: 10px;
+}
+
+//scrollbar firefox
+@-moz-document url-prefix() {
+	*{
+		scrollbar-width: thin;	
+		scrollbar-color: rgb(98, 83, 83)  rgba(0,0,0,0.3);
+	}
 }
 
 //Implement "break" class for a "newline" functionality in the smooth feed
@@ -177,7 +187,6 @@ button:hover{
 	flex-direction: row;
 	flex-wrap: wrap;
 	gap: 10px;
-	width: 100vw;
 }
 
 .upload {
@@ -218,8 +227,7 @@ input[type="text"], input[type="password"] {
 
 input[type="text"]:focus, input[type="password"]:focus {
 	border: 2px solid #000000;
-  }
-
+}
 
 .rememberLabel {
 	font-size: 17px;
@@ -268,6 +276,14 @@ input[type="text"]:focus, input[type="password"]:focus {
 	height: 38px;
 }
 
-
-
-
+.floating{
+	position: fixed;
+	bottom: 60px;
+	right: 60px;
+	border-radius: 50%;
+	font-size: 40px; 
+	height: 70px;
+	width: 70px;
+	text-align: center;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}

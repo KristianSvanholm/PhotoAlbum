@@ -5,3 +5,5 @@ pub mod signup;
 pub mod logout;
 pub mod login;
 pub mod invite;
+pub mod dialog;
+pub mod home_page;
