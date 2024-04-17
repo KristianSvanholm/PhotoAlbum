@@ -8,7 +8,6 @@ pub struct User {
     pub username: String,
     pub email: String,
     pub permissions: HashSet<String>,
-    pub admin: bool,
 }
 
 impl Default for User {
@@ -20,8 +19,13 @@ impl Default for User {
             username: "Guest".into(),
             email: "".into(),
             permissions,
-            admin: false,
         }
+    }
+}
+
+impl User {
+    pub fn has(&self, perm: &str) -> bool {
+        self.permissions.contains(perm)
     }
 }
 
@@ -46,12 +50,6 @@ pub mod ssr {
         use_context::<AuthSession>().ok_or_else(|| {
             ServerFnError::ServerError("Auth session missing.".into())
         })
-    }
-
-    impl User {
-        pub async fn has(&self, perm: &str) -> bool {
-            self.permissions.contains(perm)
-        }
     }
 
     impl AuthUser for SqlUser {
@@ -201,7 +199,6 @@ pub mod ssr {
                 } else {
                     HashSet::<String>::new()
                 },
-                admin: self.admin
             }
         }
     }

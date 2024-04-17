@@ -90,33 +90,22 @@ pub fn App() -> impl IntoView {
                                             .into_view()
                                     }
                                     Ok(Some(user)) => {
-                                        if user.admin {
-                                            view! {
-                                                <a href="/" class="active">"Home"</a>
-                                                <a href="/admin">"Admin"</a>
-                                                <ActionForm action=logout class="topbarNav-right">
-                                                    <button type="submit">"Sign Out"</button>
-                                                    <span>
-                                                    {format!("Logged in as: {}({})", user.username, user.id)}
-                                                    </span>  
-                                                </ActionForm>
-                                          }
-                                                .into_view()
-                                        } else {
-                                            view! {
-                                                <a href="/" class="active">"Home"</a>
-                                                <ActionForm action=logout class="topbarNav-right">
-                                                    <button type="submit">"Sign Out"</button>
-                                                    <span>
-                                                    {format!("Logged in as: {}({})", user.username, user.id)}
-                                                    </span>  
-                                                </ActionForm>
-                                            }
-                                                .into_view()
-                                        }
+                                        let c_user = user.clone();
+                                        view! {
+                                            <a href="/" class="active">"Home"</a>
+                                            <Show when=move || {c_user.has("admin")}>
+                                                <a href="/admin">"Admin"</a> 
+                                            </Show>
+                                            <ActionForm action=logout class="topbarNav-right">
+                                                <button type="submit">"Sign Out"</button>
+                                                <span>
+                                                {format!("Logged in as: {}({})", user.username, user.id)}
+                                                </span>  
+                                            </ActionForm>
+                                        }.into_view()
                                     }
                                 })
-                        }}
+                            }}
                     </Transition>
                 </nav>
                 <main>
@@ -143,7 +132,7 @@ pub fn App() -> impl IntoView {
                             view! {
                                 <Show 
                                     when=move || {user.get().map(|user| match user {
-                                        Ok(Some(user)) => user.admin,
+                                        Ok(Some(user)) => user.has("admin"),
                                         _ => false,
                                     }).unwrap_or(false)}>
                                     <AdminPanel/>
