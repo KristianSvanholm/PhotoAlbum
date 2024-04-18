@@ -1,33 +1,16 @@
-/* Container for navigation bar at the top */
-//Default button layout
-button {
-	background-color: rgba(182,80,6,255);
-	font-size: 18px;
-	border: 0px;
-	border-radius: 5px;
-	color: rgba(248,243,237,255);
-	text-align: center;
-	padding-left: 15px;
-	padding-right: 15px;
-	padding-top: 5px;
-	padding-bottom: 5px;
-    transition: background-color 0.3s ease;
-    cursor: pointer;
-	&:hover{
-		background-color: rgba(196,76,51,255);
-	}
-}
+@use 'color';
 
+/* Container for navigation bar at the top */
 .topbarNav {
 	margin: -5px;
     width: 100vw;
-    background-color: rgba(63, 68, 90, 255);
+    background-color: color.$secondary;
     padding: 15px;
     overflow: hidden;
 
 	a, span, button {
 		float: left;
-		color: #f2f2f2;
+		color: color.$on-secondary;
 		text-align: center;
 		padding: 14px 16px;
 		text-decoration: none;
@@ -35,7 +18,7 @@ button {
 	}
 
 	span {
-		background-color: rgb(182, 80, 6);
+		background-color: color.$primary;
 		margin-right: 25px;
 	}
 
@@ -43,7 +26,7 @@ button {
 		border: 0;
 		border-radius: 0;
 		transition: none;
-		background-color: rgba(63, 68, 90, 255);
+		background-color: transparent;
 		margin-right: 5px; 
 		
 		&:hover {
@@ -58,7 +41,7 @@ button {
 	a.active {
 		text-decoration: underline;
 		font-weight: bold;
-		color: white;
+		color: color.$on-secondary;
 	}
 }
 
