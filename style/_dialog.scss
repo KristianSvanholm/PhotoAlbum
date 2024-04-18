@@ -1,4 +1,5 @@
 @use 'color';
+@use 'dimensions';
 
 /* The Modal (background) */
 .modal {
@@ -8,7 +9,7 @@
     display: block; /* Hidden by default */                     
     position: fixed; /* Stay in place */
     z-index: 1; /* Sit on top */
-    padding-top: 80px; /*Location of the box (50px header+ 2*15px padding header)*/
+    padding-top: dimensions.$topbar-height; /*Location of the box (under topbar)*/
     left: 0;
     top: 0;
     width: 100%; /* Full width */
@@ -18,14 +19,16 @@
 
     /* Modal Content */
     .modal-content {
+        $available-height: calc(100% - dimensions.$topbar-height);
+        $padding: 20px;
         background-color: color.$background-color;
         margin: auto;
-        margin-top: 30px;
-        padding: 20px;
+        margin-top: calc($available-height * 0.05 - $padding);
+        padding: $padding;
         width: 80%;
         border-radius: 5px;
         box-shadow: 0 2px 4px color.$strong-shadow;
-        max-height: calc(90% - 110px);/*maximum 90% under header*/
+        max-height: calc($available-height * 0.9 - $padding);/*maximum 90% under header*/
         overflow-y: auto;
     }
 

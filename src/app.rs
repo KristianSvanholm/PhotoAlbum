@@ -74,7 +74,7 @@ pub fn App() -> impl IntoView {
                 //###############
                 <nav class="topbarNav" node_ref=navref>
                     <Transition fallback=move || {
-                        view! { <span>"Loading..."</span> }
+                        view! { <span id="loading">"Loading..."</span> }
                     }>
                         {move || {
                             user.get()

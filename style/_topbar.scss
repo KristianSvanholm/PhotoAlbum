@@ -1,9 +1,11 @@
 @use 'color';
+@use 'dimensions';
 
 /* Container for navigation bar at the top */
 .topbarNav {
 	margin: -5px;
     width: 100vw;
+	height: calc(dimensions.$topbar-height - 2*15px);
     background-color: color.$secondary;
     padding: 15px;
     overflow: hidden;
@@ -42,6 +44,11 @@
 		text-decoration: underline;
 		font-weight: bold;
 		color: color.$on-secondary;
+	}
+
+	#loading {
+		background-color: transparent;
+		margin-right: 5px; 
 	}
 }
 
