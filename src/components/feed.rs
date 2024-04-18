@@ -3,8 +3,12 @@ use leptos::html::Div;
 use leptos_use::{UseInfiniteScrollOptions, use_infinite_scroll_with_options};
 use serde::Serialize;
 use serde::Deserialize;
+#[cfg(feature = "ssr")]
 use std::fs::File;
+#[cfg(feature = "ssr")]
 use std::io::Read;
+#[cfg(feature = "ssr")]
+use crate::auth;
 
 //Image struct for images from DB
 #[cfg_attr(feature="ssr", derive(sqlx::FromRow))]
@@ -39,6 +43,7 @@ pub enum Element {
 //Fetch images from database
 #[server(Feed, "/api")]
 pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<Element>, ServerFnError> {
+    auth::logged_in().await?;
 
     //DB connection
     use crate::app::ssr::*;
@@ -51,7 +56,6 @@ pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<Element>, 
     if db_index as i64 > total_count {
         return Ok(vec![]);
     }
-
 
     //Fetch images in descending order
     let mut files = sqlx::query_as::<_, ImageDb>(

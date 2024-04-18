@@ -4,7 +4,7 @@ use leptos::html::Input;
 #[cfg(feature = "ssr")]
 use sqlx::SqlitePool;
 #[cfg(feature = "ssr")]
-use crate::auth::get_user;
+use crate::auth;
 
 #[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -17,6 +17,7 @@ pub struct UserInfo {
 
 #[server(GetUserList, "/api")]
 pub async fn get_user_list() -> Result<Vec<UserInfo>, ServerFnError> {
+    let _admin = auth::authorized("admin").await?;
 
     use crate::db::ssr::pool;
     let pool = pool()?;
@@ -30,12 +31,14 @@ pub async fn get_user_list() -> Result<Vec<UserInfo>, ServerFnError> {
 
 
 #[server(Invite, "/api")]
-pub async fn invite(id: i64) -> Result<String, ServerFnError> {
-    
+pub async fn invite(id: i64) -> Result<String, ServerFnError> {    
     use crate::auth::ssr::SqlUser;
     use crate::db::ssr::pool;
 
-    // TODO:: Add admin auth requirement here.
+    // admin auth requirement
+    // Get the current user
+    // This will fail if the user is not logged in.
+    let admin = auth::authorized("admin").await?;
 
     let pool = pool()?;
 
@@ -44,11 +47,6 @@ pub async fn invite(id: i64) -> Result<String, ServerFnError> {
     let _user = sqlx::query_as::<_, SqlUser>(
             "SELECT * FROM users WHERE signed_up=false and id = ?"
         ).bind(id).fetch_one(&pool).await?;    
-
-    // Get the current user
-    // This will fail if the user is not logged in.
-    let admin = get_user().await?
-        .ok_or_else(|| ServerFnError::new("You are not logged in."))?;
 
     let link = create_invitation_link(&id, &admin.id, &pool).await?;
 
@@ -79,6 +77,8 @@ pub async fn create_invitation_link(
 
 #[server(CreateUser,"/api")]
 pub async fn create_user(username: String) -> Result<(), ServerFnError>{
+    // admin auth requirement
+    let _admin = auth::authorized("admin").await?;
     use crate::db::ssr::pool;
     let pool = pool()?;
 
@@ -92,7 +92,8 @@ pub async fn create_user(username: String) -> Result<(), ServerFnError>{
 
 #[server(MakeUserAdmin,"/api")]
 pub async fn make_user_admin(id: i64) -> Result<(), ServerFnError>{
-    // TODO:: Add admin auth requirement here.
+    // admin auth requirement
+    let _admin = auth::authorized("admin").await?;
 
     use crate::db::ssr::pool;
     let pool = pool()?;
