@@ -237,7 +237,7 @@ pub fn infinite_feed() -> impl IntoView {
                 }}
             }}
             </For>
-            <div class="break">
+            <div class="break center-h">
                 <Loading_Triangle show=loading/>
             </div>
         </div>
