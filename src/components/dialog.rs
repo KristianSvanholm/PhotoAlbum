@@ -1,13 +1,14 @@
 use leptos::*;
 
 #[component]
-pub fn Dialog<F>(
+pub fn Dialog<F, W>(
     /// `children` takes the `Children` type
     children: ChildrenFn,
-    open: ReadSignal<bool>,
+    open: W,
     on_close: F) -> impl IntoView
 where
-    F: Fn() + 'static+ Clone
+    F: Fn() + 'static + Clone,
+    W: Fn() -> bool + 'static,
 {
     let close = move |_|{on_close()};
     

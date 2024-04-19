@@ -141,8 +141,10 @@ async fn request_wrapper(db_index: usize, count: usize, ready_lock: WriteSignal<
 //Creates an infinite feed of images
 #[component]
 pub fn infinite_feed() -> impl IntoView {
+    use crate::components::loading::Loading_Triangle;
 
     let (ready, set_ready) = create_signal(true);
+    let (loading, set_loading) = create_signal(true);
     
     let (db_index, set_db_index) = create_signal(0);
     
@@ -155,6 +157,7 @@ pub fn infinite_feed() -> impl IntoView {
         move |_| async move {
             let images = request_wrapper(db_index.get_untracked(), FETCH_IMAGE_COUNT, set_ready).await;
             set_images.update(|imgs| imgs.extend(images));
+            set_loading(false);
         });
 
     let el = create_node_ref::<Div>();
@@ -172,6 +175,7 @@ pub fn infinite_feed() -> impl IntoView {
             if !ready.get_untracked(){
                 return; // TODO:: Look into disabling the entire thing instead of just returning forever
             }
+            set_loading(true);
 
             //Index counter for DB
             let newIndex = db_index.get_untracked() + FETCH_IMAGE_COUNT; 
@@ -233,6 +237,9 @@ pub fn infinite_feed() -> impl IntoView {
                 }}
             }}
             </For>
+            <div class="break">
+                <Loading_Triangle show=loading/>
+            </div>
         </div>
         </div>
     }
