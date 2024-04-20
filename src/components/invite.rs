@@ -113,6 +113,9 @@ pub async fn make_user_admin(id: i64) -> Result<(), ServerFnError>{
 pub async fn delete_user(username: String) -> Result<(), ServerFnError>{
     use crate::db::ssr::pool;
 
+    // admin auth requirement
+    let _admin = auth::authorized("admin").await?;
+
     let pool = pool()?;
 
     sqlx::query("DELETE FROM users WHERE username = ?")
