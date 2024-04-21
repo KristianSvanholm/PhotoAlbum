@@ -8,7 +8,7 @@ use crate::components::dialog::Dialog;
 pub fn HomePage() -> impl IntoView
 {
     let (showing_upload, set_showing_upload) = create_signal(false);
-    let (showing_image, set_showing_image) = create_signal(true);  
+    let (image_id, set_image_id) = create_signal(None); 
 
     view! {
         <button
@@ -19,14 +19,14 @@ pub fn HomePage() -> impl IntoView
             }><i class="fas fa-plus"></i>
         </button>
         <Dialog 
-            on_close=move || set_showing_image(false)
-            open=showing_image
+            on_close=move || set_image_id(None)
+            open=move || image_id.get().is_some()
             close_on_outside=true
             close_button=false>
-            <ImageView image_id="4655b97b-af2d-40a8-8ecb-37857d425c64".to_string()/>
+            <ImageView image_id=move || image_id.get().unwrap_or_default()/>
             <div class="bottom-buttons">
                 <button><i class="fas fa-angle-left"></i></button>
-                <button>"Close"</button>
+                <button on:click=move |_| set_image_id(None)>"Close"</button>
                 <button><i class="fas fa-angle-right"></i></button>
             </div>
         </Dialog>
@@ -36,6 +36,6 @@ pub fn HomePage() -> impl IntoView
             <h1>"Upload"</h1>
             <UploadMedia/>
         </Dialog>
-        <InfiniteFeed/>
+        <InfiniteFeed on_image_click=move |image_id:String| set_image_id(Some(image_id))/>
     }
 }

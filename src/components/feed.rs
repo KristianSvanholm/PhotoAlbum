@@ -144,7 +144,12 @@ async fn request_wrapper(db_index: usize, count: usize, ready_lock: WriteSignal<
 
 //Creates an infinite feed of images
 #[component]
-pub fn infinite_feed() -> impl IntoView {
+pub fn infinite_feed<F>(
+    on_image_click: F,
+) -> impl IntoView
+where
+    F: Fn(String) + 'static + Clone + Copy,
+{
     use crate::components::loading::Loading_Triangle;
 
     let (ready, set_ready) = create_signal(true);
@@ -214,7 +219,14 @@ pub fn infinite_feed() -> impl IntoView {
                     Element::ImageDb(ref img) => {
                         view!{
                             <div class={move || imageDisplayClass.get()}>
-                            <img src={format!("data:image/jpeg;base64,{}", img.get().path)} alt="Base64 Image" class="image imageSmooth" />
+                            {
+                                let id = img.get().id.clone();
+                                view!{
+                                    <img 
+                                        on:click=move |_|{on_image_click(id.clone())}
+                                        src={format!("data:image/jpeg;base64,{}", img.get().path)} alt="Base64 Image" class="image imageSmooth" />
+                                }
+                            }
                             </div>
                     }},
                     //Date

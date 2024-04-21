@@ -52,11 +52,14 @@ pub async fn get_image(image_id: String) -> Result<ImageDb, ServerFnError> {
 
 //Creates an infinite feed of images
 #[component]
-pub fn image_view(
-    image_id: String
-) -> impl IntoView {
+pub fn image_view<W>(
+    image_id: W
+) -> impl IntoView 
+where
+    W: Fn() -> String+ 'static,
+{
     use crate::components::loading::Loading_Triangle;
-    let image = create_resource(move || {image_id.clone()}, get_image);
+    let image = create_resource(image_id, get_image);
     let people = create_resource(move || (), |_|async{vec![1,2,3,4]});
 
     view! {
