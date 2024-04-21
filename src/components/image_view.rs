@@ -18,7 +18,6 @@ pub struct ImageDb {
     created_date: String,
 }
 
-
 //Fetch images from database
 #[server(Image, "/api")]
 pub async fn get_image(image_id: String) -> Result<ImageDb, ServerFnError> {
@@ -63,29 +62,27 @@ where
     let people = create_resource(move || (), |_|async{vec![1,2,3,4]});
 
     view! {
-        <div>
+        <Suspense fallback = move|| view!{
+            <div class="img_alt">
+                <Loading_Triangle show=move||{true}/>
+            </div>}>
             <div class="imageview">
-                <Suspense fallback = move|| view!{
-                        <div class="img_alt">
-                            <Loading_Triangle show=move||{true}/>
-                        </div>}>{
-                    move || match image.get(){
-                        Some(Ok(image)) => 
-                            view!{<img src={format!("data:image/jpeg;base64,{}", image.path)} alt="Base64 Image" class="" />}
-                            .into_view(),
-                        None => 
-                            view!{
-                                <div class="img_alt">
-                                    <Loading_Triangle show=move||{true}/>
-                                </div>
-                            }.into_view(),
-                        Some(Err(e)) => 
-                            view!{
-                                <h1>"An Error occured"</h1>
-                                <span>{format!("An Error occured{}", e)}</span>
-                            }.into_view(),
-                    }}
-                </Suspense>
+                {move || match image.get(){
+                    Some(Ok(image)) => 
+                        view!{<img src={format!("data:image/jpeg;base64,{}", image.path)} alt="Base64 Image" class="" />}
+                        .into_view(),
+                    None => 
+                        view!{
+                            <div class="img_alt">
+                                <Loading_Triangle show=move||{true}/>
+                            </div>
+                        }.into_view(),
+                    Some(Err(e)) => 
+                        view!{
+                            <h1>"An Error occured"</h1>
+                            <span>{format!("An Error occured{}", e)}</span>
+                        }.into_view(),
+                }}
             </div>
             <div class="image-info">
                 <div class="wraper-h">
@@ -93,14 +90,10 @@ where
                         <h3>"In this picture:"</h3>
                         <div class="faces">
                             <Suspense fallback = move|| view!{<p>"loading"</p>}>
-                                {logging::log!("People: {:?}", people.get());}
                                 <Show when=move||people.get().is_some()>
                                     <For
-                                        // a function that returns the items we're iterating over; a signal is fine
                                         each=move || people.get().unwrap()
-                                        // a unique key for each item
                                         key=|person| person.clone()
-                                        // renders each item to a view
                                         children=move |person: i32| {
                                             view! {
                                                 <div class="face">
@@ -133,6 +126,6 @@ where
                     </div>
                 </div>
             </div>
-        </div>
+        </Suspense>
     }
 }

@@ -1,15 +1,16 @@
 @use 'dialog';
 @use 'color';
 
+.img_alt{
+    width:100%;
+    height: calc(dialog.$max-content-height - 10px - 31px); //make button bar fit in 
+    background-color: transparentize(color.$secondary, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
 .imageview{
-    .img_alt{
-        width:100%;
-        height: dialog.$max-content-height;
-        background-color: transparentize(color.$secondary, 0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
     img{
         object-fit: contain;
         width:100%;
@@ -81,25 +82,7 @@
 .bottom-buttons{
     display: flex;
     justify-content: space-between;
+    padding-top: 10px;
 }
-
-/*
-.modal .close {
-    color: #b65006;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-    position: relative;
-    top: 0;
-    right: 0;
-    height: 0;
-}
-
-.imageview {
-    width: 100%;
-    height: calc(90vh - 90.2px);
-}
-
-*/
 
 

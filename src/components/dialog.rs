@@ -1,6 +1,5 @@
 use leptos::*;
 use web_sys::MouseEvent;
-use leptos::html::Div;
 
 #[component]
 pub fn Dialog<F, W>(
@@ -19,16 +18,13 @@ where
 {
     let on_close_clone= on_close.clone();
     let close = move |_|{on_close()};
-    let overlay = create_node_ref::<Div>();
     let close_on_outside = move |_|{if close_on_outside{
-        //if mouse_event.target().unwrap()==overlay{
-            on_close_clone();
-        //}
+        on_close_clone();
     }};
     
     view! {
         <Show when=open>
-            <div class="modal" node_ref=overlay
+            <div class="modal"
             on:click = close_on_outside.clone()>
                 <div class="modal-content"
                 on:click = |mouse_event:MouseEvent|{mouse_event.stop_propagation();}>
