@@ -1,0 +1,32 @@
+@use 'dialog';
+
+.imageview{
+    width: 100%;
+    max-height: dialog.$max-content-height;
+    img{
+        object-fit: contain;
+        width:100%;
+        max-height: dialog.$max-content-height;
+    }
+}
+
+/*
+.modal .close {
+    color: #b65006;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    position: relative;
+    top: 0;
+    right: 0;
+    height: 0;
+}
+
+.imageview {
+    width: 100%;
+    height: calc(90vh - 90.2px);
+}
+
+*/
+
+

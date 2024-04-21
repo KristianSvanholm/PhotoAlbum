@@ -8,3 +8,4 @@ pub mod invite;
 pub mod dialog;
 pub mod home_page;
 pub mod loading;
+pub mod image_view;
