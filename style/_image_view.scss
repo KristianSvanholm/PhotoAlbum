@@ -1,13 +1,86 @@
 @use 'dialog';
+@use 'color';
 
 .imageview{
-    width: 100%;
-    max-height: dialog.$max-content-height;
+    .img_alt{
+        width:100%;
+        height: dialog.$max-content-height;
+        background-color: transparentize(color.$secondary, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
     img{
         object-fit: contain;
         width:100%;
         max-height: dialog.$max-content-height;
     }
+}
+
+.image-info{
+    .people{
+        h3{
+            margin-top: 0;
+        }
+
+        .faces{
+            display: flex;
+            gap: 20px;
+        }
+
+        .face{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            img{
+                border-radius: 50%;
+                width:50px;
+            }
+        }
+
+        .edit_persons{
+            border-radius: 50%;
+            width:50px;
+            height: 50px;
+        }
+
+    }
+
+    .upload-info{
+        h3, p{
+            margin: 0; // 4px 0;
+        }
+
+        i{
+            margin-right: 4px;
+            font-size: large;
+        }
+
+        button i{
+            margin-right: 8px;
+            font-size: medium;
+        }
+
+        padding: 1em 0;
+        display: flex;
+        gap: 4px;
+        //align-items: center;
+        flex-direction: column;
+    }
+
+    .wraper-h{
+        padding: 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+}
+
+
+.bottom-buttons{
+    display: flex;
+    justify-content: space-between;
 }
 
 /*

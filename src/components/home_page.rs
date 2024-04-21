@@ -23,7 +23,12 @@ pub fn HomePage() -> impl IntoView
             open=showing_image
             close_on_outside=true
             close_button=false>
-            <ImageView/>
+            <ImageView image_id="4655b97b-af2d-40a8-8ecb-37857d425c64".to_string()/>
+            <div class="bottom-buttons">
+                <button><i class="fas fa-angle-left"></i></button>
+                <button>"Close"</button>
+                <button><i class="fas fa-angle-right"></i></button>
+            </div>
         </Dialog>
         <Dialog 
             on_close=move || set_showing_upload(false) 
