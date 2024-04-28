@@ -1,14 +1,19 @@
 use leptos::*;
-use std::{fs, time::{Duration, Instant}};
+use std::{
+    fs,
+    time::{Duration, Instant},
+};
 
-use image::{DynamicImage, GrayImage, Rgba};
+use std::io::Cursor;
+
+use image::{DynamicImage, GrayImage, ImageFormat, Rgba};
 use imageproc::drawing::draw_hollow_rect_mut;
 use imageproc::rect::Rect;
 
 use rustface::{Detector, FaceInfo, ImageData};
 
 #[server(Run, "/api", "Cbor")]
-pub async fn run(encoded_string: String) -> Result<String, ServerFnError>{
+pub async fn run(encoded_string: String) -> Result<String, ServerFnError> {
     let mut detector = match rustface::create_detector("model.bin") {
         Ok(detector) => detector,
         Err(error) => {
@@ -35,18 +40,21 @@ pub async fn run(encoded_string: String) -> Result<String, ServerFnError>{
     for face in faces {
         let rect = Rect::at(face.bbox().x() as i32, face.bbox().y() as i32)
             .of_size(face.bbox().width() as u32, face.bbox().height() as u32);
-        
+
         let color: Rgba<u8> = Rgba([0, 255, 0, 0]);
 
         draw_hollow_rect_mut(&mut image, rect, color);
     }
 
-    let buf = image.to_rgba8().into_raw();
-    
-    fs::write("./album/test.png", buf).expect("Failed to write image");
+    let mut buf: Vec<u8> = Vec::new();
+    image
+        .write_to(&mut Cursor::new(&mut buf), ImageFormat::Jpeg)
+        .unwrap();
+    //let buf = image.to_rgba8().into_raw();
+
+    fs::write("./album/test.jpg", buf).expect("Failed to write image");
     Ok("Success".to_string())
 }
-
 
 fn decode_image(encoded_string: String) -> DynamicImage {
     let bytes = base64::decode(encoded_string).expect("Failed to decode image");
@@ -69,5 +77,3 @@ fn detect_faces(detector: &mut dyn Detector, gray: &GrayImage) -> Vec<FaceInfo> 
 fn get_millis(duration: Duration) -> f64 {
     duration.as_secs_f64() * 1000.0
 }
-
-
