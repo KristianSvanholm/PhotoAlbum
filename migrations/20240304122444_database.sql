@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE TABLE IF NOT EXISTS user_permissions (
-    user_id  INTEGER NOT NULL REFERENCES users(id),
+    user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token    TEXT NOT NULL
 );
 

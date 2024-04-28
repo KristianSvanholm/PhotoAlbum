@@ -23,6 +23,12 @@ impl Default for User {
     }
 }
 
+impl User {
+    pub fn has(&self, perm: &str) -> bool {
+        self.permissions.contains(perm)
+    }
+}
+
 #[cfg(feature = "ssr")]
 pub mod ssr {
     pub use super::User;
@@ -44,12 +50,6 @@ pub mod ssr {
         use_context::<AuthSession>().ok_or_else(|| {
             ServerFnError::ServerError("Auth session missing.".into())
         })
-    }
-
-    impl User {
-        pub fn has(&self, perm: &str) -> bool {
-            self.permissions.contains(perm)
-        }
     }
 
     impl AuthUser for SqlUser {
@@ -198,7 +198,7 @@ pub mod ssr {
                     .collect::<HashSet<String>>()
                 } else {
                     HashSet::<String>::new()
-                }
+                },
             }
         }
     }

@@ -1,0 +1,48 @@
+@use 'color';
+@use 'dimensions';
+
+/* The Modal (background) */
+.modal {
+    $close-color: color.$primary; 
+    $close-focus-color: color.$primary-active; 
+
+    display: block; /* Hidden by default */                     
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    padding-top: dimensions.$topbar-height; /*Location of the box (under topbar)*/
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: color.$shadow; /* Black w/ opacity */
+
+    /* Modal Content */
+    .modal-content {
+        $available-height: calc(100% - dimensions.$topbar-height);
+        $padding: 20px;
+        background-color: color.$background-color;
+        margin: auto;
+        margin-top: calc($available-height * 0.05 - $padding);
+        padding: $padding;
+        width: 80%;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px color.$strong-shadow;
+        max-height: calc($available-height * 0.9 - $padding);/*maximum 90% under header*/
+        overflow-y: auto;
+    }
+
+    /* The Close Button */
+    .close {
+        color: $close-color;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        &:hover,
+        &:focus {
+            color: $close-focus-color;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    }
+}

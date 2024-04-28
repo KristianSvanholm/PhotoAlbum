@@ -1,0 +1,17 @@
+@use 'color';
+
+.loading {
+    stroke: color.$secondary; 
+}
+
+.loading-thumb {
+    stroke-dasharray: 20 80;
+    animation: dashoffset 1.5s linear infinite;
+    stroke: color.$secondary; 
+}
+  
+@keyframes dashoffset {
+    to {
+      stroke-dashoffset: 100;
+    }
+}

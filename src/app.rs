@@ -1,6 +1,7 @@
-use leptos::*;
+use leptos::{html::{Nav, ToHtmlElement}, *};
 use leptos_meta::*;
 use leptos_router::*;
+use leptos_use::use_event_listener;
 use crate::components::{
     login::Login, 
     logout::Logout, 
@@ -29,6 +30,7 @@ pub mod ssr {
 #[component]
 pub fn App() -> impl IntoView {
     use crate::auth::get_user;
+    use leptos::ev::click;
 
     let login = create_server_action::<Login>();
     let logout = create_server_action::<Logout>();
@@ -44,17 +46,35 @@ pub fn App() -> impl IntoView {
         },
         move |_| get_user(),
     );
+
+    let navref: leptos::NodeRef<Nav> = create_node_ref();
+    
+    let _ = use_event_listener(navref, click, move |ev| {
+        let target = event_target::<web_sys::HtmlAnchorElement>(&ev).to_leptos_element();
+        if Some(target.tag_name()) != Some("A".to_string()) {
+            return;
+        }
+        let _ = target.class_list().add_1("active");        
+        let nav = navref.get_untracked().unwrap().children();
+        for i in 0..nav.length() {
+            let link = nav.get_with_index(i).unwrap().to_leptos_element();
+            if Some(link.text_content()) != Some(target.text_content()) {
+                let _ = link.class_list().remove_1("active");
+            }
+        }
+    });
+
     provide_meta_context();
 
     view! {
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.ico"/>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
         <Stylesheet id="leptos" href="/pkg/photo-album.css"/>
         <Router>
                 //###############
-
-                <nav>
+                <nav class="topbarNav" node_ref=navref>
                     <Transition fallback=move || {
-                        view! { <span>"Loading..."</span> }
+                        view! { <span id="loading">"Loading..."</span> }
                     }>
                         {move || {
                             user.get()
@@ -70,22 +90,23 @@ pub fn App() -> impl IntoView {
                                             .into_view()
                                     }
                                     Ok(Some(user)) => {
+                                        let c_user = user.clone();
                                         view! {
-                                            <a href="/">"Home"</a>
-                                            <a href="/upload">"Upload"</a>
-                                            <a href="/settings">"Settings"</a>
-                                            <a href="/admin">"Admin panel"</a>
-                                            <span>
-                                                {format!("Logged in as: {} ({})", user.username, user.id)}
-                                            </span>
-                                        }
-                                            .into_view()
+                                            <a href="/" class="active">"Home"</a>
+                                            <Show when=move || {c_user.has("admin")}>
+                                                <a href="/admin">"Admin"</a> 
+                                            </Show>
+                                            <ActionForm action=logout class="topbarNav-right">
+                                                <button type="submit">"Sign Out"</button>
+                                                <span>
+                                                {format!("Logged in as: {}({})", user.username, user.id)}
+                                                </span>  
+                                            </ActionForm>
+                                        }.into_view()
                                     }
                                 })
-                        }}
+                            }}
                     </Transition>
-                   
-
                 </nav>
                 <main>
                 //###############
@@ -107,13 +128,17 @@ pub fn App() -> impl IntoView {
                         }
                     }>
                         <Route path="/" view=HomePage/>
-                        <Route path="/settings" view=move || {
+                        <Route path="/admin" view=move || {
                             view! {
-                                <Logout action=logout/>
+                                <Show 
+                                    when=move || {user.get().map(|user| match user {
+                                        Ok(Some(user)) => user.has("admin"),
+                                        _ => false,
+                                    }).unwrap_or(false)}>
+                                    <AdminPanel/>
+                                </Show>
                             }
                         }/>
-                        <Route path="/upload" view=UploadPage/>
-                        <Route path="/admin" view=AdminPanel/>
                     </Route>
                     <Route path="/signup" view=move || {
                         view! {
@@ -140,25 +165,10 @@ pub fn App() -> impl IntoView {
 // ===== ONLY ROUTES ======
 #[component]
 fn HomePage() -> impl IntoView {
-    use crate::components::feed::InfiniteFeed;
+    use crate::components::home_page::HomePage;
 
     view! {
-        <h1>"Home"</h1>
-        <InfiniteFeed/>
-
-    }
-}
-
-#[component]
-fn UploadPage() -> impl IntoView {
-
-    use crate::components::upload::UploadMedia;
-
-    view! {
-        <div class="main">
-            <h1>"Upload"</h1>
-            <UploadMedia/>
-        </div>
+        <HomePage/>
     }
 }
 
