@@ -2,6 +2,9 @@ use leptos::{html::Input, *};
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::*;
 use futures::future; // 0.3.5
+use crate::facerecog::run;
+
+
 #[cfg(feature = "ssr")]
 use crate::auth;
 
@@ -175,6 +178,10 @@ pub fn UploadMedia() -> impl IntoView {
                         media().iter().map(|(filename, encoded_string)| {
                             let f = filename.clone();
                             let e = encoded_string.clone();
+
+                            let encoded_string = run(e.clone());
+                            logging::log!("{}", encoded_string);
+
                             view! {
                                     <div class="upload">
                                         <img src={format!("data:image/png;base64,{}", e)}/>

@@ -8,6 +8,7 @@ pub mod fileserv;
 pub mod db;
 pub mod app;
 pub mod components;
+pub mod facerecog;
 
 #[cfg(feature = "hydrate")]
 #[wasm_bindgen::prelude::wasm_bindgen]
