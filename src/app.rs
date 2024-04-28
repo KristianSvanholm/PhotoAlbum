@@ -180,7 +180,6 @@ pub fn App() -> impl IntoView {
 #[component]
 fn HomePage() -> impl IntoView {
     use crate::components::home_page::HomePage;
-
     view! {
         <HomePage/>
     }
