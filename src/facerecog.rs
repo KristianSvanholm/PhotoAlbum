@@ -1,17 +1,25 @@
-use std::time::{Duration, Instant};
+use leptos::*;
+use std::{fs, time::{Duration, Instant}};
 
 use image::{DynamicImage, GrayImage, Rgba};
 use imageproc::drawing::draw_hollow_rect_mut;
 use imageproc::rect::Rect;
 
-use rustface::{Detector, FaceInfo, ImageData, load_model, create_detector_with_model};
+use rustface::{Detector, FaceInfo, ImageData};
 
-pub fn run(encoded_string: String) -> String{
-    let model = load_model("model.bin").unwrap();
+#[server(Run, "/api", "Cbor")]
+pub async fn run(encoded_string: String) -> Result<String, ServerFnError>{
+    let mut detector = match rustface::create_detector("model.bin") {
+        Ok(detector) => detector,
+        Err(error) => {
+            println!("Failed to create detector: {}", error);
+            return Err(ServerFnError::new("Failed to create detector".to_string()));
+        }
+    };
 
-    let mut detector = create_detector_with_model(model);
+    logging::log!("Running face detection");
 
-    detector.set_min_face_size(1);
+    detector.set_min_face_size(20);
     detector.set_score_thresh(2.0);
     detector.set_pyramid_scale_factor(0.8);
     detector.set_slide_window_step(4, 4);
@@ -34,9 +42,9 @@ pub fn run(encoded_string: String) -> String{
     }
 
     let buf = image.to_rgba8().into_raw();
-    let encoded_string = base64::encode(&buf);
-
-    encoded_string
+    
+    fs::write("./album/test.png", buf).expect("Failed to write image");
+    Ok("Success".to_string())
 }
 
 

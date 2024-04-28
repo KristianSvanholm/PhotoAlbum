@@ -178,9 +178,20 @@ pub fn UploadMedia() -> impl IntoView {
                         media().iter().map(|(filename, encoded_string)| {
                             let f = filename.clone();
                             let e = encoded_string.clone();
+                            let x = e.clone();
 
-                            let encoded_string = run(e.clone());
-                            logging::log!("{}", encoded_string);
+                            spawn_local(async move {
+                                let encoded_string = run(x).await;
+                                let res = match encoded_string {
+                                    Ok(e) => e,
+                                    Err(e) => {
+                                        logging::log!("{}", e);
+                                        "".to_string()
+                                    }
+                                };
+                                
+                                logging::log!("data:image/png;base64,{}", res);
+                            });
 
                             view! {
                                     <div class="upload">
