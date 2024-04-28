@@ -32,27 +32,24 @@ pub async fn run(encoded_string: String) -> Result<String, ServerFnError> {
     let image = decode_image(encoded_string);
 
     let gray = image.to_luma8();
+    let mut rgb = image.to_rgba8();
 
     let faces = detect_faces(&mut *detector, &gray);
-
-    let mut image = DynamicImage::ImageLuma8(gray);
 
     for face in faces {
         let rect = Rect::at(face.bbox().x() as i32, face.bbox().y() as i32)
             .of_size(face.bbox().width() as u32, face.bbox().height() as u32);
 
-        let color: Rgba<u8> = Rgba([0, 255, 0, 0]);
+        let color: Rgba<u8> = Rgba([0, 255, 0, 255]);
 
-        draw_hollow_rect_mut(&mut image, rect, color);
+        draw_hollow_rect_mut(&mut rgb, rect, color);
     }
 
-    let mut buf: Vec<u8> = Vec::new();
-    image
-        .write_to(&mut Cursor::new(&mut buf), ImageFormat::Jpeg)
-        .unwrap();
-    //let buf = image.to_rgba8().into_raw();
+    match rgb.save("./test.png") {
+        Ok(_) => logging::log!("Saved result"),
+        Err(message) => logging::log!("Failed to save result to a file. Reason: {}", message),
+    }
 
-    fs::write("./album/test.jpg", buf).expect("Failed to write image");
     Ok("Success".to_string())
 }
 
