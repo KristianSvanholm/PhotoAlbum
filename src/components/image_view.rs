@@ -1,21 +1,20 @@
+#[cfg(feature = "ssr")]
+use crate::auth;
 use leptos::*;
-use serde::Serialize;
 use serde::Deserialize;
+use serde::Serialize;
 #[cfg(feature = "ssr")]
 use std::fs::File;
 #[cfg(feature = "ssr")]
 use std::io::Read;
-#[cfg(feature = "ssr")]
-use crate::auth;
 
 //Image struct for images from DB
-#[cfg_attr(feature="ssr", derive(sqlx::FromRow))]
+#[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
 pub struct ImageDb {
     id: String,
     path: String,
     upload_date: String,
-    created_date: String,
 }
 
 //Fetch images from database
@@ -25,7 +24,7 @@ pub async fn get_image(image_id: String) -> Result<ImageDb, ServerFnError> {
 
     //DB connection
     use crate::app::ssr::*;
-    let pool = pool()?; 
+    let pool = pool()?;
 
     //Fetch image
     let mut img = sqlx::query_as::<_, ImageDb>(
@@ -38,7 +37,8 @@ pub async fn get_image(image_id: String) -> Result<ImageDb, ServerFnError> {
     // Read the image file
     let mut file = File::open(&img.path).expect("Failed to open image file");
     let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer).expect("Failed to read image file");
+    file.read_to_end(&mut buffer)
+        .expect("Failed to read image file");
 
     // Encode the image buffer as base64
     let base64_image = base64::encode(&buffer);
@@ -51,15 +51,13 @@ pub async fn get_image(image_id: String) -> Result<ImageDb, ServerFnError> {
 
 //Creates an infinite feed of images
 #[component]
-pub fn image_view<W>(
-    image_id: W
-) -> impl IntoView 
+pub fn image_view<W>(image_id: W) -> impl IntoView
 where
-    W: Fn() -> String+ 'static,
+    W: Fn() -> String + 'static,
 {
     use crate::components::loading::Loading_Triangle;
     let image = create_resource(image_id, get_image);
-    let people = create_resource(move || (), |_|async{vec![1,2,3,4]});
+    let people = create_resource(move || (), |_| async { vec![1, 2, 3, 4] });
 
     view! {
         <Suspense fallback = move|| view!{
@@ -68,16 +66,16 @@ where
             </div>}>
             <div class="imageview">
                 {move || match image.get(){
-                    Some(Ok(image)) => 
+                    Some(Ok(image)) =>
                         view!{<img src={format!("data:image/jpeg;base64,{}", image.path)} alt="Base64 Image" class="" />}
                         .into_view(),
-                    None => 
+                    None =>
                         view!{
                             <div class="img_alt">
                                 <Loading_Triangle show=move||{true}/>
                             </div>
                         }.into_view(),
-                    Some(Err(e)) => 
+                    Some(Err(e)) =>
                         view!{
                             <h1>"An Error occured"</h1>
                             <span>{format!("An Error occured{}", e)}</span>
@@ -105,7 +103,7 @@ where
                                     />
                                     <button class="edit_persons"
                                         on:click=move |_| {
-                                            logging::log!("Edit"); 
+                                            logging::log!("Edit");
                                         }><i class="fas fa-pen"></i>
                                     </button>
                                 </Show>
