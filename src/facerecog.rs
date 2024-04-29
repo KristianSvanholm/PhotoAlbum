@@ -1,12 +1,7 @@
 use leptos::*;
-use std::{
-    fs,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
-use std::io::Cursor;
-
-use image::{DynamicImage, GrayImage, ImageFormat, Rgba};
+use image::{DynamicImage, GrayImage, Rgba};
 use imageproc::drawing::draw_hollow_rect_mut;
 use imageproc::rect::Rect;
 
@@ -45,7 +40,16 @@ pub async fn run(encoded_string: String) -> Result<String, ServerFnError> {
         draw_hollow_rect_mut(&mut rgb, rect, color);
     }
 
-    match rgb.save("./test.png") {
+    use std::fs;
+    use std::path::Path;
+    if !Path::new("./faces").exists() {
+        let _ = fs::create_dir_all("./faces")?;
+    }
+
+    let uuid = uuid::Uuid::new_v4().to_string();
+    let path = format!("./faces/{}.png", uuid);
+
+    match rgb.save(path) {
         Ok(_) => logging::log!("Saved result"),
         Err(message) => logging::log!("Failed to save result to a file. Reason: {}", message),
     }
