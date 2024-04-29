@@ -76,6 +76,7 @@ pub fn App() -> impl IntoView {
                     <Transition fallback=move || {
                         view! { <span id="loading">"Loading..."</span> }
                     }>
+                        {logging::log!("Requesting {:?}", user.get());}
                         {move || {
                             user.get()
                                 .map(|user| match user {
@@ -117,28 +118,41 @@ pub fn App() -> impl IntoView {
                     <Route path="/" view=move || {
                         view! {
                             <Show 
-                                when=move || {user.get().map(|user| match user {
-                                    Ok(Some(_)) => true,
-                                    Ok(None) => false,
-                                    Err(_) => false,
-                                }).unwrap_or(false)} 
-                                fallback= move || view! { <Login action=login/> }>
+                                when=move||match user.get(){
+                                    Some(_) => true,
+                                    None => false
+                                }
+                                fallback= || view! {  <Loading/> }>
                                 <Outlet/>
                             </Show>
                         }
                     }>
-                        <Route path="/" view=HomePage/>
-                        <Route path="/admin" view=move || {
+                        <Route path="/" view=move || {
                             view! {
                                 <Show 
                                     when=move || {user.get().map(|user| match user {
-                                        Ok(Some(user)) => user.has("admin"),
-                                        _ => false,
-                                    }).unwrap_or(false)}>
-                                    <AdminPanel/>
+                                        Ok(Some(_)) => true,
+                                        Ok(None) => false,
+                                        Err(_) => false,
+                                    }).unwrap_or(false)} 
+                                    fallback= move || view! { <Login action=login/> }>
+                                    <Outlet/>
                                 </Show>
                             }
-                        }/>
+                        }>
+                            <Route path="/" view=HomePage/>
+                            <Route path="/admin" view=move || {
+                                view! {
+                                    <Show 
+                                        when=move || {user.get().map(|user| match user {
+                                            Ok(Some(user)) => user.has("admin"),
+                                            _ => false,
+                                        }).unwrap_or(false)}>
+                                        <AdminPanel/>
+                                    </Show>
+                                }
+                            }/>
+                        </Route>
                     </Route>
                     <Route path="/signup" view=move || {
                         view! {
@@ -166,9 +180,19 @@ pub fn App() -> impl IntoView {
 #[component]
 fn HomePage() -> impl IntoView {
     use crate::components::home_page::HomePage;
-
     view! {
         <HomePage/>
+    }
+}
+
+#[component]
+fn Loading() -> impl IntoView {
+    use crate::components::loading::Loading_Triangle;
+
+    view! {
+        <div class="center-h" style="width:100%">
+            <Loading_Triangle show=move || true/>
+        </div>
     }
 }
 
