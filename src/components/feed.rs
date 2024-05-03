@@ -58,7 +58,7 @@ pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<Element>, 
 
     //Fetch images in descending order
     let mut files = sqlx::query_as::<_, ImageDb>(
-        "SELECT id, path, uploadDate AS upload_date FROM files ORDER BY uploadDate ASC LIMIT ? OFFSET ?;",
+        "SELECT id, path, uploadDate AS upload_date FROM files ORDER BY uploadDate DESC LIMIT ? OFFSET ?;",
     )
     .bind(count.to_string())
     .bind(db_index.to_string())
