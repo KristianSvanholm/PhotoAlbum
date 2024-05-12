@@ -82,31 +82,7 @@ pub fn HomePage() -> impl IntoView
             }}
             else {None}
         }
-    ); 
-    /*
-    let (showing_upload, set_showing_upload) = create_signal(false);
-    let (image_id, set_image_id) = create_signal(None);
-    let next_image_id = create_local_resource(
-        image_id, 
-        |prev_id| async move {
-            if prev_id.is_some(){futures::future::Either::Left(next_prev_image_id(prev_id.unwrap(), 1))}
-            else {futures::future::Either::Right(futures::future::ok(None))}
-        }
-    ); 
-    let next_image_id = create_resource(
-        image_id, 
-        |prev_id| async move {
-            if prev_id.is_some(){next_prev_image_id(prev_id.unwrap(), 1)}
-            else {Ok(None).into()}
-        }
-    );*/
-        
-        
-        /*async (
-            if prev_id.is_some(){next_prev_image_id(prev_id.unwrap(), 1).await}
-            else {Option(None);}
-        )
-    );*/
+    );
 
     view! {
         <button
@@ -123,13 +99,6 @@ pub fn HomePage() -> impl IntoView
             close_button=false>
             <ImageView image_id=move || image_id.get().unwrap_or_default()/>
             <div class="bottom-buttons">
-                {
-                    logging::log!(
-                        "next_image {:?} prev_image: {:?}",
-                        next_image_id.get(),
-                        prev_image_id.get()
-                    );
-                }
                 <button on:click=move |_| set_image_id(prev_image_id.get().unwrap())
                     disabled=move||{prev_image_id.get().is_none() || prev_image_id.get().unwrap().is_none()}>
                     <i class="fas fa-angle-left"></i></button>
