@@ -25,7 +25,7 @@ pub async fn fetch_image_list() -> Result<Vec<String>, ServerFnError> {
 }
 
 #[server(NextImageId, "/api")]
-pub async fn next_prev_image_id(prev_id: String, offset: i16) -> Result<String, ServerFnError> {
+pub async fn next_prev_image_id(prev_id: String, offset: i16) -> Result<Option<String>, ServerFnError> {
     use crate::auth;
     auth::logged_in().await?;
 
@@ -50,7 +50,7 @@ pub async fn next_prev_image_id(prev_id: String, offset: i16) -> Result<String, 
     )
     .bind(offset)
     .bind(prev_id)
-    .fetch_one(&pool)
+    .fetch_optional(&pool)
     .await?;
 
     Ok(new_id)
@@ -60,23 +60,53 @@ pub async fn next_prev_image_id(prev_id: String, offset: i16) -> Result<String, 
 pub fn HomePage() -> impl IntoView
 {
     let (showing_upload, set_showing_upload) = create_signal(false);
-    let (image_id, set_image_id) = create_signal(None); 
-    //let images = create_resource(|| (), |_| async move {fetch_image_list()});
-
-    let next_prev_image_click = move |offset:i16| {
-        spawn_local(async move {
-            match next_prev_image_id(image_id.get_untracked().unwrap_or_default(), offset).await {
-                Ok(next_id) => 
-                {
-                    set_image_id(Some(next_id));
-                },
-                Err(e) => {
-                    logging::log!("{}", e);
-                    let error_message = e.to_string().split(":").collect::<Vec<&str>>()[1].to_string();
-                },
-            };
-        })
-    };
+    let (image_id, set_image_id) = create_signal(None);
+    let next_image_id = create_local_resource(
+        image_id, 
+        |prev_id| async move {
+            if prev_id.is_some(){ match next_prev_image_id(prev_id.unwrap(), 1).await{
+                Ok(Some(id))=>Some(id),
+                Ok(None) => None,
+                Err(_err) => None,
+            }}
+            else {None}
+        }
+    ); 
+    let prev_image_id = create_local_resource(
+        image_id, 
+        |prev_id| async move {
+            if prev_id.is_some(){ match next_prev_image_id(prev_id.unwrap(), -1).await{
+                Ok(Some(id))=>Some(id),
+                Ok(None) => None,
+                Err(_err) => None,
+            }}
+            else {None}
+        }
+    ); 
+    /*
+    let (showing_upload, set_showing_upload) = create_signal(false);
+    let (image_id, set_image_id) = create_signal(None);
+    let next_image_id = create_local_resource(
+        image_id, 
+        |prev_id| async move {
+            if prev_id.is_some(){futures::future::Either::Left(next_prev_image_id(prev_id.unwrap(), 1))}
+            else {futures::future::Either::Right(futures::future::ok(None))}
+        }
+    ); 
+    let next_image_id = create_resource(
+        image_id, 
+        |prev_id| async move {
+            if prev_id.is_some(){next_prev_image_id(prev_id.unwrap(), 1)}
+            else {Ok(None).into()}
+        }
+    );*/
+        
+        
+        /*async (
+            if prev_id.is_some(){next_prev_image_id(prev_id.unwrap(), 1).await}
+            else {Option(None);}
+        )
+    );*/
 
     view! {
         <button
@@ -93,9 +123,19 @@ pub fn HomePage() -> impl IntoView
             close_button=false>
             <ImageView image_id=move || image_id.get().unwrap_or_default()/>
             <div class="bottom-buttons">
-                <button on:click=move |_| next_prev_image_click(-1)><i class="fas fa-angle-left"></i></button>
+                {
+                    logging::log!(
+                        "next_image {:?} prev_image: {:?}",
+                        next_image_id.get(),
+                        prev_image_id.get()
+                    );
+                }
+                <button on:click=move |_| set_image_id(prev_image_id.get().unwrap())
+                    disabled=move||{prev_image_id.get().is_none() || prev_image_id.get().unwrap().is_none()}>
+                    <i class="fas fa-angle-left"></i></button>
                 <button on:click=move |_| set_image_id(None)>"Close"</button>
-                <button on:click=move |_| next_prev_image_click(1)>
+                <button on:click=move |_| set_image_id(next_image_id.get().unwrap())
+                    disabled=move||{next_image_id.get().is_none() || next_image_id.get().unwrap().is_none()}>
                     <i class="fas fa-angle-right"></i>
                 </button>
             </div>

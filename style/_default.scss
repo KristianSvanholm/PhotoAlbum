@@ -24,7 +24,12 @@ button {
     transition: background-color 0.3s ease;
     cursor: pointer;
 	&:hover{
-		background-color: color.$primary-active
+		background-color: color.$primary-active;
+	}
+	&[disabled]{
+		background-color: mix(color.$primary, color.$on-primary, 70%); //desaturate(color.$primary, 30%);
+		color: mix(color.$primary, color.$on-primary, 40%); //darken(color.$on-primary, 50%)
+		cursor: default;
 	}
 }
   
