@@ -41,6 +41,7 @@ lazy_static = "1.4.0"
 axum-login = { version = "0.15.1", optional = true }
 tower-sessions-sqlx-store = { version = "0.12.0", features = ["sqlite"],  optional = true }
 time = { version = "0.3.30",  optional = true }
+regex = "1.10.4"
 
 [dev-dependencies]
 axum-test = "14.8.0"

@@ -8,11 +8,13 @@ use std::fs::File;
 #[cfg(feature = "ssr")]
 use std::io::Read;
 use crate::components::dialog::Dialog;
+use leptos::html::Input;
 
 //Image struct for images from DB
 #[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
 pub struct ImageDb {
+    id: String,
     path: String,
     upload_date: String,
     created_date: Option<String>,
@@ -31,7 +33,7 @@ pub async fn get_image(image_id: String) -> Result<ImageDb, ServerFnError> {
 
     //Fetch image
     let mut img = sqlx::query_as::<_, ImageDb>(
-        "SELECT path, uploadDate AS upload_date, createdDate AS created_date, users.username AS uploader, location 
+        "SELECT files.id, path, uploadDate AS upload_date, createdDate AS created_date, users.username AS uploader, location 
         FROM files INNER JOIN users ON files.uploadedBy=users.id WHERE files.id = ?;",
     )
     .bind(image_id)
@@ -53,7 +55,53 @@ pub async fn get_image(image_id: String) -> Result<ImageDb, ServerFnError> {
     Ok(img)
 }
 
-//Creates an infinite feed of images
+//Update image info
+#[server(UpdateImageInfo, "/api")]
+pub async fn update_image_info(image_id: String, created_date: Option<String>, location: Option<String>) -> Result<(), ServerFnError> {
+    let user = auth::logged_in().await?;
+
+    //DB connection
+    use crate::app::ssr::*;
+    let pool = pool()?;
+
+    //only uploader
+    let uploader:bool = sqlx::query_scalar("SELECT uploadedBy=? FROM files WHERE id = ?")
+        .bind(user.id)
+        .bind(image_id.clone())
+        .fetch_one(&pool)
+        .await?;
+
+    if !uploader {
+        return Err(ServerFnError::ServerError(
+            "You are not authorized, only the uploader can change an image".to_string(),
+        ))
+    }
+
+    //Check if created_date is a valid date
+    use regex::Regex;
+    if let Some(date) = created_date.clone() {
+        let valid_date = Regex::new(r"^\d{4}-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])$").unwrap().is_match(&date);
+        if !valid_date{
+            return Err(ServerFnError::ServerError(
+                "The date is corrupted. The date must have the format yyyy-mm-dd".to_string(),
+            ))
+        }
+    }
+
+    //Update image
+    sqlx::query(
+        "UPDATE files SET createdDate=?,location=? WHERE id = ?;",
+    )
+    .bind(created_date)
+    .bind(location)
+    .bind(image_id)
+    .execute(&pool)
+    .await?;
+
+    Ok(())
+}
+
+//Display image and it's deatils
 #[component]
 pub fn image_view<W>(image_id: W) -> impl IntoView
 where
@@ -63,7 +111,11 @@ where
     let image = create_resource(image_id, get_image);
     let people = create_resource(move || (), |_| async { vec![1, 2, 3, 4] });
     let empty = "   --".to_string();
+
     let (editing_image_info, set_editing_image_info) = create_signal(false);
+    let (updating_image_info, set_updating_image_info) = create_signal(false);
+    let input_location = create_node_ref::<Input>();
+    let input_created_date = create_node_ref::<Input>();
 
     view! {
         <Suspense fallback = move|| view!{
@@ -131,15 +183,12 @@ where
                             close_on_outside=false
                             close_button=false 
                             small=true>
-                            <form 
-                                on:submit=move |_| {
-                                    //TODO save
-                                    set_editing_image_info(false);
-                                }>
+                            <form>
                                 <h3> Edit the image information: </h3>
                                 <br/>
                                 <label for="created_date"><i class="fas fa-camera"></i>Taken on</label>
                                 <input
+                                    _ref=input_created_date
                                     type="date"
                                     value={if let Some(Ok(img))=image.get(){if let Some(date) = img.clone().created_date {date}else{"".to_string()}} else {"".to_string()}}
                                     name="created_date"
@@ -147,17 +196,58 @@ where
                                 <br/>
                                 <label for="created_date"><i class="fas fa-map-marker-alt"></i>Location</label>
                                 <input 
+                                    _ref=input_location
                                     type="text" 
                                     value={if let Some(Ok(img))=image.get(){if let Some(location) = img.clone().location {location}else{"".to_string()}} else {"".to_string()}}
                                     name="loaction" 
                                 />
                                 <br/>
                                 <div class="bottom-buttons">
-                                    <button on:click=move |_|set_editing_image_info(false)>
+                                    <button type="button" on:click=move |_|set_editing_image_info(false)>
                                         "Cancel"
                                     </button>
-                                    <button type="submit">
-                                        "Save"
+                                    <button type="button"
+                                    on:click= move |_| {
+                                        if let Some(Ok(img))=image.get(){
+                                            let node_created_date = input_created_date.get().expect("ref should be loaded by now");
+                                            let node_loaction = input_location.get().expect("ref should be loaded by now");
+                                            let location = if node_loaction.value().is_empty() {None} else {Some(node_loaction.value())};
+                                            let created_date = if node_created_date.value().is_empty() {None} else {Some(node_created_date.value())};
+                                            //check for changes
+                                            if img.created_date==created_date &&
+                                                img.location==location {
+                                                    set_editing_image_info(false);
+                                                    return
+                                                }
+                                            //save changes
+                                            logging::log!(
+                                                "location {:?}, created_date {:?}",
+                                                location, created_date
+                                            );
+                                            let x:bool =  None::<Option<String>>==None;
+                                            logging::log!(
+                                                "None=None {:?}",
+                                                x
+                                            );
+                                            set_updating_image_info(true);
+                                            image.update(|mut image|{
+                                                if let Some(Ok(ref mut img))= &mut image{
+                                                    img.created_date=created_date.clone();
+                                                    img.location=location.clone();
+                                                };
+                                                logging::log!(
+                                                    "{:?}",
+                                                    image
+                                                );
+                                            });
+                                            spawn_local(async move{
+                                                update_image_info(img.id, created_date, location).await;
+                                            });
+                                            set_updating_image_info(false);
+                                            set_editing_image_info(false);
+                                        }
+                                    }>
+                                        {if updating_image_info.get() {"Loading..."} else {"Save"}}
                                     </button>
                                 </div>
                             </form>
