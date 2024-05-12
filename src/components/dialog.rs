@@ -11,6 +11,8 @@ pub fn Dialog<F, W>(
     close_on_outside: bool,
     #[prop(default = true)]
     close_button: bool,
+    #[prop(default = false)]
+    small: bool,
 ) -> impl IntoView
 where
     F: Fn() + 'static + Clone,
@@ -27,6 +29,7 @@ where
             <div class="modal"
             on:click = close_on_outside.clone()>
                 <div class="modal-content"
+                class:small=small
                 on:click = |mouse_event:MouseEvent|{mouse_event.stop_propagation();}>
                 {if close_button {
                     view!{

@@ -7,12 +7,12 @@ use serde::Serialize;
 use std::fs::File;
 #[cfg(feature = "ssr")]
 use std::io::Read;
+use crate::components::dialog::Dialog;
 
 //Image struct for images from DB
 #[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
 pub struct ImageDb {
-    id: String,
     path: String,
     upload_date: String,
     created_date: Option<String>,
@@ -125,6 +125,43 @@ where
                             {if let Some(Ok(img))=image.get(){if let Some(location) = img.location {location}else{empty.clone()}} else {empty.clone()}}
                         </span>
                         <button on:click=move |_| {set_editing_image_info(true);}><i class="fas fa-pen"></i>"Edit"</button>
+                        <Dialog 
+                            on_close=move || set_editing_image_info(false)
+                            open=editing_image_info
+                            close_on_outside=false
+                            close_button=false 
+                            small=true>
+                            <form 
+                                on:submit=move |_| {
+                                    //TODO save
+                                    set_editing_image_info(false);
+                                }>
+                                <h3> Edit the image information: </h3>
+                                <br/>
+                                <label for="created_date"><i class="fas fa-camera"></i>Taken on</label>
+                                <input
+                                    type="date"
+                                    value={if let Some(Ok(img))=image.get(){if let Some(date) = img.clone().created_date {date}else{"".to_string()}} else {"".to_string()}}
+                                    name="created_date"
+                                />
+                                <br/>
+                                <label for="created_date"><i class="fas fa-map-marker-alt"></i>Location</label>
+                                <input 
+                                    type="text" 
+                                    value={if let Some(Ok(img))=image.get(){if let Some(location) = img.clone().location {location}else{"".to_string()}} else {"".to_string()}}
+                                    name="loaction" 
+                                />
+                                <br/>
+                                <div class="bottom-buttons">
+                                    <button on:click=move |_|set_editing_image_info(false)>
+                                        "Cancel"
+                                    </button>
+                                    <button type="submit">
+                                        "Save"
+                                    </button>
+                                </div>
+                            </form>
+                        </Dialog>
                     </div>
                     <div class="upload-info">
                         <h3>"Uploaded by:"</h3>
