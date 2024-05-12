@@ -15,6 +15,9 @@ pub struct ImageDb {
     id: String,
     path: String,
     upload_date: String,
+    created_date: Option<String>,
+    uploader: String,
+    location: Option<String>,
 }
 
 //Fetch images from database
@@ -28,7 +31,8 @@ pub async fn get_image(image_id: String) -> Result<ImageDb, ServerFnError> {
 
     //Fetch image
     let mut img = sqlx::query_as::<_, ImageDb>(
-        "SELECT id, path, uploadDate AS upload_date, createdDate AS created_date FROM files WHERE id = ?;",
+        "SELECT path, uploadDate AS upload_date, createdDate AS created_date, users.username AS uploader, location 
+        FROM files INNER JOIN users ON files.uploadedBy=users.id WHERE files.id = ?;",
     )
     .bind(image_id)
     .fetch_one(&pool)
@@ -58,6 +62,8 @@ where
     use crate::components::loading::Loading_Triangle;
     let image = create_resource(image_id, get_image);
     let people = create_resource(move || (), |_| async { vec![1, 2, 3, 4] });
+    let empty = "   --".to_string();
+    let (editing_image_info, set_editing_image_info) = create_signal(false);
 
     view! {
         <Suspense fallback = move|| view!{
@@ -112,14 +118,22 @@ where
                     </div>
                     <div class="upload-info">
                         <h3>"Image info:"</h3>
-                        <span><i class="fas fa-camera"></i>"01.03.2024"</span>
-                        <span><i class="fas fa-map-marker-alt"></i>"Somewhere"</span>
-                        <button><i class="fas fa-pen"></i>"Edit"</button>
+                        <span><i class="fas fa-camera"></i>
+                            {if let Some(Ok(img))=image.get(){if let Some(date) = img.created_date {date}else{empty.clone()}} else {empty.clone()}}
+                        </span>
+                        <span><i class="fas fa-map-marker-alt"></i>
+                            {if let Some(Ok(img))=image.get(){if let Some(location) = img.location {location}else{empty.clone()}} else {empty.clone()}}
+                        </span>
+                        <button on:click=move |_| {set_editing_image_info(true);}><i class="fas fa-pen"></i>"Edit"</button>
                     </div>
                     <div class="upload-info">
                         <h3>"Uploaded by:"</h3>
-                        <span><i class="fas fa-user-circle"></i>"Name xyz"</span>
-                        <span><i class="fas fa-calendar-day"></i>"01.03.2024"</span>
+                        <span><i class="fas fa-user-circle"></i>
+                            {if let Some(Ok(img))=image.get(){img.uploader}else{"--".to_string()}}    
+                        </span>
+                        <span><i class="fas fa-calendar-day"></i>
+                            {if let Some(Ok(img))=image.get(){img.upload_date}else{"--".to_string()}}
+                        </span>
                         <button>"Delete image"</button>
                     </div>
                 </div>
