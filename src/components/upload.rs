@@ -1,17 +1,52 @@
-use crate::facerecog::run;
-use futures::future; // 0.3.5
-use leptos::{html::Input, *};
-use wasm_bindgen::UnwrapThrowExt;
-use web_sys::*;
-
 #[cfg(feature = "ssr")]
 use crate::auth;
+use futures::future; // 0.3.5
+use image::{DynamicImage, GrayImage};
+use leptos::{html::Input, *};
+use rustface::{Detector, ImageData};
+use wasm_bindgen::UnwrapThrowExt;
+use web_sys::*;
 
 #[derive(
     Debug, Clone, leptos::server_fn::serde::Serialize, leptos::server_fn::serde::Deserialize,
 )]
 pub struct MediaPayload {
     data: Vec<(String, Vec<u8>)>,
+}
+
+#[server(Faces, "/api", "Cbor")]
+pub async fn faces(image_b64: String) -> Result<usize, ServerFnError> {
+    let mut detector = match rustface::create_detector("model.bin") {
+        Ok(detector) => detector,
+        Err(_) => {
+            return Err(ServerFnError::new(
+                "Failed to create face detector".to_string(),
+            ));
+        }
+    };
+
+    detector.set_min_face_size(20);
+    detector.set_score_thresh(2.0);
+    detector.set_pyramid_scale_factor(0.8);
+    detector.set_slide_window_step(4, 4);
+
+    let image = decode_image(image_b64).to_luma8();
+    let facecount = detect_faces(&mut *detector, &image);
+    Ok(facecount)
+}
+
+#[cfg(feature = "ssr")]
+fn decode_image(encoded_string: String) -> DynamicImage {
+    let bytes = base64::decode(encoded_string).expect("Failed to decode image");
+    image::load_from_memory(&bytes).expect("Failed to load image")
+}
+
+#[cfg(feature = "ssr")]
+fn detect_faces(detector: &mut dyn Detector, gray: &GrayImage) -> usize {
+    let (width, height) = gray.dimensions();
+    let image = ImageData::new(gray, width, height);
+    let faces = detector.detect(&image);
+    faces.len()
 }
 
 #[server(Upload, "/api", "Cbor")]
@@ -64,7 +99,7 @@ pub async fn upload_media_server(
 }
 
 async fn upload(
-    payload: Vec<(String, String)>,
+    payload: Vec<(String, String, usize)>,
     set_done: WriteSignal<usize>,
     done_count: ReadSignal<usize>,
 ) -> Result<(), ServerFnError> {
@@ -74,7 +109,7 @@ async fn upload(
 
     let mut calls = Vec::new();
 
-    for (filename, encoded_string) in payload {
+    for (filename, encoded_string, _) in payload {
         calls.push(upload_wrapper(
             filename,
             encoded_string,
@@ -135,6 +170,7 @@ pub fn UploadMedia() -> impl IntoView {
             set_count(length);
 
             let encoded = convert_files_to_b64(files.unwrap(), set_memory, memory_count).await;
+
             set_media(encoded);
         });
     };
@@ -190,30 +226,49 @@ pub fn UploadMedia() -> impl IntoView {
                 {
                     move || if !media().is_empty() {
 
-                        media().iter().map(|(filename, encoded_string)| {
+                        media().iter().map(|(filename, encoded_string, name_count)| {
                             let f = filename.clone();
                             let e = encoded_string.clone();
-                            let x = e.clone();
-
-                            spawn_local(async move {
-                                let encoded_string = run(x).await;
-                                let res = match encoded_string {
-                                    Ok(e) => e,
-                                    Err(e) => {
-                                        logging::log!("{}", e);
-                                        "".to_string()
-                                    }
-                                };
-
-                                logging::log!("data:image/png;base64,{}", res);
-                            });
+                            let nc = name_count.clone();
+                            let (count, set_count) = create_signal(nc);
 
                             view! {
                                     <div class="upload">
-                                        <img src={format!("data:image/png;base64,{}", e)}/>
+                                        <div class="horizontal">
+                                            <img src={format!("data:image/png;base64,{}", e)}/>
+                                            <div>
+                                            <For
+                                                each=move || 1..=count.get()
+                                                key=|idx| *idx
+                                                children=move |_| {
+                                                    view!{
+                                                        <input></input><br/>
+                                                    }
+                                                }
+                                            />
+                                                <button class="controls" on:click=move |_| {
+                                                    set_count.update(|n| *n += 1);
+                                                }>+</button>
+                                                <button class="controls" on:click=move |_| {
+                                                    set_count.update(|n| *n -= 1);
+                                                }>-</button>
+
+                                            /*{
+                                                for _n in 0..count.get() {
+                                                    return view! {
+                                                        <div>
+                                                            <input></input><br/>
+                                                         </div>
+                                                        }
+                                                }
+
+
+                                            }*/
+                                            </div>
+                                        </div>
                                         <button on:click=move |_| {
                                             let mut m = media.get_untracked();
-                                            m.retain(|(filename, _)| filename != &f);
+                                            m.retain(|(filename, _, _)| filename != &f);
                                             set_media(m);
 
                                             set_memory(memory_count() - 1);
@@ -244,22 +299,30 @@ async fn convert_file_to_b64(
     file: File,
     set_memory: WriteSignal<usize>,
     memory_count: ReadSignal<usize>,
-) -> (String, String) {
+) -> (String, String, usize) {
     let gloo_file = gloo::file::File::from(file);
 
     let bytes = gloo::file::futures::read_as_bytes(&gloo_file)
         .await
         .expect_throw("Failed to read file");
     let encoded_string = base64::encode(&bytes);
+
+    let count = match faces(encoded_string.clone()).await {
+        Ok(c) => c,
+        Err(_err) => 0, // Handle error?
+    }; // face count
+
+    logging::log!("{}", count);
+
     set_memory(memory_count.get_untracked() + 1);
-    (gloo_file.name(), encoded_string)
+    (gloo_file.name(), encoded_string, count)
 }
 
 async fn convert_files_to_b64(
     files: FileList,
     set_memory: WriteSignal<usize>,
     memory_count: ReadSignal<usize>,
-) -> Vec<(String, String)> {
+) -> Vec<(String, String, usize)> {
     let mut res = Vec::new();
     for i in 0..files.length() {
         let file = files.get(i).expect_throw("Failed to get file");
