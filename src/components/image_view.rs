@@ -221,18 +221,13 @@ where
                                 on_close=move||set_editing_image_info(false)
                                 open=editing_image_info
                                 update_image=move |new_image_info|{
-                                    //image.set(Ok(new_image)); 
                                     image.update(|mut image|{
                                         if let Some(Ok(ref mut img))= &mut image{
                                             img.created_date=new_image_info.created_date.clone();
                                             img.location=new_image_info.location.clone();
-                                        };logging::log!(
-                                            "{:?}",
-                                            image
-                                        );
+                                        };
                                     });
-                                    //image.refetch();
-                                    logging::log!("Updating!");}/>
+                                }/>
                             }
                         }else{
                             ().into_view()
@@ -289,10 +284,6 @@ where
             return
         }
         //save changes
-        logging::log!(
-            "location {:?}, created_date {:?}",
-            location, created_date
-        );
         set_updating_image_info(true);
         let mut new_img = image_clone.clone();
         new_img.created_date=created_date.clone();
