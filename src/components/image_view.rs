@@ -228,16 +228,52 @@ where
     I: Fn(ImageDb) + 'static + Clone,
 {
     let (updating_image_info, set_updating_image_info) = create_signal(false);
+    let (update_error, set_update_error) = create_signal(None);
     let input_location = create_node_ref::<Input>();
     let input_created_date = create_node_ref::<Input>();
-    let (image, _set_image) = create_signal(image);
-    let (on_close, _set_on_close) = create_signal(on_close);
-    let (update_image, _set_update_image) = create_signal(update_image);
-    let (update_error, set_update_error) = create_signal(None);
+
+    let on_close_clone = on_close.clone();
+    let on_close_click = move |_|{on_close_clone()};
+
+    let image_clone = image.clone();
+    let on_close_clone = on_close.clone();
+    let on_edit_save = move |_| {
+        let node_created_date = input_created_date.get().expect("ref should be loaded by now");
+        let node_loaction = input_location.get().expect("ref should be loaded by now");
+        let location = if node_loaction.value().is_empty() {None} else {Some(node_loaction.value())};
+        let created_date = if node_created_date.value().is_empty() {None} else {Some(node_created_date.value())};
+        //check for changes
+        if image_clone.created_date==created_date &&
+        image_clone.location==location {
+            on_close_clone();
+            return
+        }
+        //save changes
+        logging::log!(
+            "location {:?}, created_date {:?}",
+            location, created_date
+        );
+        set_updating_image_info(true);
+        let mut new_img = image_clone.clone();
+        new_img.created_date=created_date.clone();
+        new_img.location=location.clone();
+        let image_id = image_clone.id.clone();
+        let update_image = update_image.clone();
+        let on_close = on_close_clone.clone();
+        spawn_local(async move{
+            match update_image_info(image_id.clone(), created_date, location).await{
+                Ok(_)=> {
+                    update_image(new_img);
+                    on_close();},
+                Err(e) => set_update_error(Some(e)),
+            }
+            set_updating_image_info(false);
+        });
+    };
 
     view! {
         <Dialog 
-            on_close=move||on_close()()
+            on_close=on_close
             open=open
             close_on_outside=false
             close_button=false 
@@ -249,7 +285,7 @@ where
                 <input
                     _ref=input_created_date
                     type="date"
-                    value={if let Some(date) = image().created_date {date}else{"".to_string()}}
+                    value={if let Some(date) = image.created_date.clone() {date}else{"".to_string()}}
                     name="created_date"
                 />
                 <br/>
@@ -257,7 +293,7 @@ where
                 <input 
                     _ref=input_location
                     type="text" 
-                    value={if let Some(location) = image().location {location}else{"".to_string()}}
+                    value={if let Some(location) = image.location.clone() {location}else{"".to_string()}}
                     name="loaction" 
                 />
                 <br/>
@@ -265,40 +301,11 @@ where
                     <span>{format!("An Error occured{}", update_error().unwrap())}</span>
                 </Show>
                 <div class="bottom-buttons">
-                    <button type="button" on:click=move |_|{on_close()()}>
+                    <button type="button" on:click=on_close_click.clone()>
                         "Cancel"
                     </button>
                     <button type="button"
-                    on:click= move |_| {
-                        let node_created_date = input_created_date.get().expect("ref should be loaded by now");
-                        let node_loaction = input_location.get().expect("ref should be loaded by now");
-                        let location = if node_loaction.value().is_empty() {None} else {Some(node_loaction.value())};
-                        let created_date = if node_created_date.value().is_empty() {None} else {Some(node_created_date.value())};
-                        //check for changes
-                        if image.get_untracked().created_date==created_date &&
-                        image.get_untracked().location==location {
-                                on_close()();
-                                return
-                            }
-                        //save changes
-                        logging::log!(
-                            "location {:?}, created_date {:?}",
-                            location, created_date
-                        );
-                        set_updating_image_info(true);
-                        let mut new_img = image.get_untracked();
-                        new_img.created_date=created_date.clone();
-                        new_img.location=location.clone();
-                        spawn_local(async move{
-                            match update_image_info(image.get_untracked().id, created_date, location).await{
-                                Ok(_)=> {
-                                    update_image.get_untracked()(new_img);
-                                    on_close.get_untracked()();},
-                                Err(e) => set_update_error(Some(e)),
-                            }
-                            set_updating_image_info(false);
-                        });
-                    }>
+                    on:click=on_edit_save.clone()>
                         {if updating_image_info.get() {"Loading..."} else {"Save"}}
                     </button>
                 </div>
