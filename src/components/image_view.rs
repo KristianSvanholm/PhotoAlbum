@@ -9,6 +9,7 @@ use std::fs::File;
 use std::io::Read;
 use crate::components::dialog::Dialog;
 use leptos::html::Input;
+ use std::ops::Not;
 
 //Image struct for images from DB
 #[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
@@ -20,6 +21,39 @@ pub struct ImageDb {
     created_date: Option<String>,
     uploader: String,
     location: Option<String>,
+}
+impl ImageDb {
+    pub fn into_info(
+        self,
+    ) -> ImageInfo {
+        ImageInfo {
+            id: self.id,
+            upload_date: self.upload_date,
+            created_date: self.created_date,
+            uploader: self.uploader,
+            location: self.location,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct ImageInfo {
+    id: String,
+    upload_date: String,
+    created_date: Option<String>,
+    uploader: String,
+    location: Option<String>,
+}
+impl Default for ImageInfo {
+    fn default() -> Self {
+        Self {
+            id: "".into(),
+            upload_date: "".into(),
+            created_date: None,
+            uploader: "".into(),
+            location: None,
+        }
+    }
 }
 
 //Fetch images from database
@@ -109,13 +143,16 @@ where
 {
     use crate::components::loading::Loading_Triangle;
     let image = create_resource(image_id, get_image);
+    let image_info = Signal::derive(move||
+        if let Some(Ok(img))=image.get(){
+            img.into_info()
+        }else{
+            ImageInfo::default()
+        });
     let people = create_resource(move || (), |_| async { vec![1, 2, 3, 4] });
-    let empty = "   --".to_string();
+    let (empty, _set_empty) = create_signal("   --".to_string());
 
     let (editing_image_info, set_editing_image_info) = create_signal(false);
-    let (updating_image_info, set_updating_image_info) = create_signal(false);
-    let input_location = create_node_ref::<Input>();
-    let input_created_date = create_node_ref::<Input>();
 
     view! {
         <Suspense fallback = move|| view!{
@@ -171,100 +208,150 @@ where
                     <div class="upload-info">
                         <h3>"Image info:"</h3>
                         <span><i class="fas fa-camera"></i>
-                            {if let Some(Ok(img))=image.get(){if let Some(date) = img.created_date {date}else{empty.clone()}} else {empty.clone()}}
+                            {move ||{if let Some(date) = image_info().created_date {date}else{empty()}}}
                         </span>
                         <span><i class="fas fa-map-marker-alt"></i>
-                            {if let Some(Ok(img))=image.get(){if let Some(location) = img.location {location}else{empty.clone()}} else {empty.clone()}}
+                            {move ||if let Some(location) = image_info().location {location}else{empty()}}
                         </span>
                         <button on:click=move |_| {set_editing_image_info(true);}><i class="fas fa-pen"></i>"Edit"</button>
-                        <Dialog 
-                            on_close=move || set_editing_image_info(false)
-                            open=editing_image_info
-                            close_on_outside=false
-                            close_button=false 
-                            small=true>
-                            <form>
-                                <h3> Edit the image information: </h3>
-                                <br/>
-                                <label for="created_date"><i class="fas fa-camera"></i>Taken on</label>
-                                <input
-                                    _ref=input_created_date
-                                    type="date"
-                                    value={if let Some(Ok(img))=image.get(){if let Some(date) = img.clone().created_date {date}else{"".to_string()}} else {"".to_string()}}
-                                    name="created_date"
-                                />
-                                <br/>
-                                <label for="created_date"><i class="fas fa-map-marker-alt"></i>Location</label>
-                                <input 
-                                    _ref=input_location
-                                    type="text" 
-                                    value={if let Some(Ok(img))=image.get(){if let Some(location) = img.clone().location {location}else{"".to_string()}} else {"".to_string()}}
-                                    name="loaction" 
-                                />
-                                <br/>
-                                <div class="bottom-buttons">
-                                    <button type="button" on:click=move |_|set_editing_image_info(false)>
-                                        "Cancel"
-                                    </button>
-                                    <button type="button"
-                                    on:click= move |_| {
-                                        if let Some(Ok(img))=image.get(){
-                                            let node_created_date = input_created_date.get().expect("ref should be loaded by now");
-                                            let node_loaction = input_location.get().expect("ref should be loaded by now");
-                                            let location = if node_loaction.value().is_empty() {None} else {Some(node_loaction.value())};
-                                            let created_date = if node_created_date.value().is_empty() {None} else {Some(node_created_date.value())};
-                                            //check for changes
-                                            if img.created_date==created_date &&
-                                                img.location==location {
-                                                    set_editing_image_info(false);
-                                                    return
-                                                }
-                                            //save changes
-                                            logging::log!(
-                                                "location {:?}, created_date {:?}",
-                                                location, created_date
-                                            );
-                                            let x:bool =  None::<Option<String>>==None;
-                                            logging::log!(
-                                                "None=None {:?}",
-                                                x
-                                            );
-                                            set_updating_image_info(true);
-                                            image.update(|mut image|{
-                                                if let Some(Ok(ref mut img))= &mut image{
-                                                    img.created_date=created_date.clone();
-                                                    img.location=location.clone();
-                                                };
-                                                logging::log!(
-                                                    "{:?}",
-                                                    image
-                                                );
-                                            });
-                                            spawn_local(async move{
-                                                update_image_info(img.id, created_date, location).await;
-                                            });
-                                            set_updating_image_info(false);
-                                            set_editing_image_info(false);
-                                        }
-                                    }>
-                                        {if updating_image_info.get() {"Loading..."} else {"Save"}}
-                                    </button>
-                                </div>
-                            </form>
-                        </Dialog>
+                        {move || if image_info().id.is_empty().not(){
+                            view!{
+                                <ImageInfoEdit
+                                image=image_info()
+                                on_close=move||set_editing_image_info(false)
+                                open=editing_image_info
+                                update_image=move |new_image_info|{
+                                    //image.set(Ok(new_image)); 
+                                    image.update(|mut image|{
+                                        if let Some(Ok(ref mut img))= &mut image{
+                                            img.created_date=new_image_info.created_date.clone();
+                                            img.location=new_image_info.location.clone();
+                                        };logging::log!(
+                                            "{:?}",
+                                            image
+                                        );
+                                    });
+                                    //image.refetch();
+                                    logging::log!("Updating!");}/>
+                            }
+                        }else{
+                            ().into_view()
+                        }}
                     </div>
                     <div class="upload-info">
                         <h3>"Uploaded by:"</h3>
                         <span><i class="fas fa-user-circle"></i>
-                            {if let Some(Ok(img))=image.get(){img.uploader}else{"--".to_string()}}    
+                            {move || if !image_info().uploader.is_empty(){image_info().uploader}else{empty()}}    
                         </span>
                         <span><i class="fas fa-calendar-day"></i>
-                            {if let Some(Ok(img))=image.get(){img.upload_date}else{"--".to_string()}}
+                            {move || if !image_info().upload_date.is_empty(){image_info().upload_date}else{empty()}}
                         </span>
                         <button>"Delete image"</button>
                     </div>
                 </div>
             </div>
         </Suspense>
+    }
+}
+
+
+#[component]
+fn image_info_edit<F, W, I>(
+    image: ImageInfo,
+    on_close: F,
+    open: W,
+    update_image: I,
+) -> impl IntoView
+where
+    F: Fn() + 'static + Clone,
+    W: Fn() -> bool + 'static,
+    I: Fn(ImageInfo) + 'static + Clone,
+{
+    let (updating_image_info, set_updating_image_info) = create_signal(false);
+    let (update_error, set_update_error) = create_signal(None);
+    let input_location = create_node_ref::<Input>();
+    let input_created_date = create_node_ref::<Input>();
+
+    let on_close_clone = on_close.clone();
+    let on_close_click = move |_|{on_close_clone()};
+
+    let image_clone = image.clone();
+    let on_close_clone = on_close.clone();
+    let on_edit_save = move |_| {
+        let node_created_date = input_created_date.get().expect("ref should be loaded by now");
+        let node_loaction = input_location.get().expect("ref should be loaded by now");
+        let location = if node_loaction.value().is_empty() {None} else {Some(node_loaction.value())};
+        let created_date = if node_created_date.value().is_empty() {None} else {Some(node_created_date.value())};
+        //check for changes
+        if image_clone.created_date==created_date &&
+        image_clone.location==location {
+            on_close_clone();
+            return
+        }
+        //save changes
+        logging::log!(
+            "location {:?}, created_date {:?}",
+            location, created_date
+        );
+        set_updating_image_info(true);
+        let mut new_img = image_clone.clone();
+        new_img.created_date=created_date.clone();
+        new_img.location=location.clone();
+        let image_id = image_clone.id.clone();
+        let update_image = update_image.clone();
+        let on_close = on_close_clone.clone();
+        spawn_local(async move{
+            match update_image_info(image_id.clone(), created_date, location).await{
+                Ok(_)=> {
+                    set_updating_image_info(false);
+                    update_image(new_img);
+                    on_close();},
+                Err(e) => {
+                    set_update_error(Some(e));
+                    set_updating_image_info(false);},
+            }
+        });
+    };
+
+    view! {
+        <Dialog 
+            on_close=on_close
+            open=open
+            close_on_outside=false
+            close_button=false 
+            small=true>
+            <form>
+                <h3> Edit the image information: </h3>
+                <br/>
+                <label for="created_date"><i class="fas fa-camera"></i>Taken on</label>
+                <input
+                    _ref=input_created_date
+                    type="date"
+                    value={if let Some(date) = image.created_date.clone() {date}else{"".to_string()}}
+                    name="created_date"
+                />
+                <br/>
+                <label for="created_date"><i class="fas fa-map-marker-alt"></i>Location</label>
+                <input 
+                    _ref=input_location
+                    type="text" 
+                    value={if let Some(location) = image.location.clone() {location}else{"".to_string()}}
+                    name="loaction" 
+                />
+                <br/>
+                <Show when=move||{update_error().is_some()}>
+                    <span>{format!("An Error occured{}", update_error().unwrap())}</span>
+                </Show>
+                <div class="bottom-buttons">
+                    <button type="button" on:click=on_close_click.clone()>
+                        "Cancel"
+                    </button>
+                    <button type="button"
+                    on:click=on_edit_save.clone()>
+                        {if updating_image_info.get() {"Loading..."} else {"Save"}}
+                    </button>
+                </div>
+            </form>
+        </Dialog>
     }
 }

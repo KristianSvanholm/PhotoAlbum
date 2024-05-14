@@ -4,26 +4,6 @@ use crate::components::upload::UploadMedia;
 use crate::components::image_view::ImageView;
 use crate::components::dialog::Dialog;
 
-#[server(ImageList, "/api")]
-pub async fn fetch_image_list() -> Result<Vec<String>, ServerFnError> {
-    use crate::auth;
-    auth::logged_in().await?;
-
-    //DB connection
-    use crate::app::ssr::*;
-    let pool = pool()?;
-
-    //Fetch images in descending order
-    //TODO: add filtering here 
-    let img_ids = sqlx::query_scalar(
-        "SELECT id FROM files ORDER BY uploadDate ASC;",
-    )
-    .fetch_all(&pool)
-    .await?;
-
-    Ok(img_ids)
-}
-
 #[server(NextImageId, "/api")]
 pub async fn next_prev_image_id(prev_id: String, offset: i16) -> Result<Option<String>, ServerFnError> {
     use crate::auth;
