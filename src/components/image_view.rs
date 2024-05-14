@@ -142,7 +142,7 @@ where
     W: Fn() -> String + 'static,
 {
     use crate::components::loading::Loading_Triangle;
-    let image = create_local_resource(image_id, get_image);
+    let image = create_resource(image_id, get_image);
     let image_info = Signal::derive(move||
         if let Some(Ok(img))=image.get(){
             img.into_info()
@@ -150,7 +150,7 @@ where
             ImageInfo::default()
         });
     let people = create_resource(move || (), |_| async { vec![1, 2, 3, 4] });
-    let empty = "   --".to_string();
+    let (empty, _set_empty) = create_signal("   --".to_string());
 
     let (editing_image_info, set_editing_image_info) = create_signal(false);
 
@@ -208,13 +208,13 @@ where
                     <div class="upload-info">
                         <h3>"Image info:"</h3>
                         <span><i class="fas fa-camera"></i>
-                            {if let Some(date) = image_info().created_date {date}else{empty.clone()}}
+                            {move ||{if let Some(date) = image_info().created_date {date}else{empty()}}}
                         </span>
                         <span><i class="fas fa-map-marker-alt"></i>
-                            {if let Some(location) = image_info().location {location}else{empty.clone()}}
+                            {move ||if let Some(location) = image_info().location {location}else{empty()}}
                         </span>
                         <button on:click=move |_| {set_editing_image_info(true);}><i class="fas fa-pen"></i>"Edit"</button>
-                        {if image_info().id.is_empty().not(){
+                        {move || if image_info().id.is_empty().not(){
                             view!{
                                 <ImageInfoEdit
                                 image=image_info()
@@ -241,10 +241,10 @@ where
                     <div class="upload-info">
                         <h3>"Uploaded by:"</h3>
                         <span><i class="fas fa-user-circle"></i>
-                            {if !image_info().uploader.is_empty(){image_info().uploader}else{empty.clone()}}    
+                            {move || if !image_info().uploader.is_empty(){image_info().uploader}else{empty()}}    
                         </span>
                         <span><i class="fas fa-calendar-day"></i>
-                            {if !image_info().upload_date.is_empty(){image_info().upload_date}else{empty.clone()}}
+                            {move || if !image_info().upload_date.is_empty(){image_info().upload_date}else{empty()}}
                         </span>
                         <button>"Delete image"</button>
                     </div>
@@ -303,11 +303,13 @@ where
         spawn_local(async move{
             match update_image_info(image_id.clone(), created_date, location).await{
                 Ok(_)=> {
+                    set_updating_image_info(false);
                     update_image(new_img);
                     on_close();},
-                Err(e) => set_update_error(Some(e)),
+                Err(e) => {
+                    set_update_error(Some(e));
+                    set_updating_image_info(false);},
             }
-            set_updating_image_info(false);
         });
     };
 
