@@ -1,6 +1,8 @@
 @use 'dialog';
 @use 'color';
 
+$breakpoint-tablet: 768px;
+
 .img_alt{
     width:100%;
     height: calc(dialog.$max-content-height - 10px - 31px); //make button bar fit in 
@@ -20,6 +22,10 @@
 
 .image-info{
     .people{
+        @media (min-width: $breakpoint-tablet) {
+            max-width: 60%;
+        }
+
         h3{
             margin-top: 0;
         }
@@ -27,6 +33,7 @@
         .faces{
             display: flex;
             gap: 20px;
+            flex-wrap: wrap;
         }
 
         .face{
@@ -37,6 +44,25 @@
             img{
                 border-radius: 50%;
                 width:50px;
+            }
+            input[type="text"]{
+                width: 100px;
+                font-size: 17px;
+                text-align: center;
+                margin: 8px;
+                border: none;
+                border-radius: 5px;
+                text-overflow: ellipsis;
+                &:focus{
+                    border: 2px solid color.$secondary;
+                }
+            }	
+            span{
+                max-width: 100px;
+                text-align: center;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                text-wrap: nowrap;
             }
         }
 
@@ -72,7 +98,9 @@
 
     .wraper-h{
         padding: 30px;
+        gap: 20px;
         display: flex;
+        flex-wrap: wrap;
         justify-content: space-between;
         align-items: center;
     }

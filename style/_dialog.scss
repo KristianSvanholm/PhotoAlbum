@@ -18,7 +18,7 @@ $max-content-height: calc($available-height * 0.9 - 2*$padding);
     top: 0;
     width: 100%; /* Full width */
     height: 100%; /* Full height */
-    overflow: auto; /* Enable scroll if needed */
+    overflow: hidden; /* Hide scroll on bakground */
     background-color: color.$shadow; /* Black w/ opacity */
 
     /* Modal Content */
@@ -34,6 +34,7 @@ $max-content-height: calc($available-height * 0.9 - 2*$padding);
         overflow-y: auto;
         &.small{
             width: max-content;
+            max-width: 90vw;
             margin-top: calc($available-height * 0.5);
             transform: translateY(-50%);
         }
