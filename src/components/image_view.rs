@@ -9,6 +9,7 @@ use std::fs::File;
 use std::io::Read;
 use crate::components::dialog::Dialog;
 use leptos::html::Input;
+ use std::ops::Not;
 
 //Image struct for images from DB
 #[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
@@ -20,6 +21,39 @@ pub struct ImageDb {
     created_date: Option<String>,
     uploader: String,
     location: Option<String>,
+}
+impl ImageDb {
+    pub fn into_info(
+        self,
+    ) -> ImageInfo {
+        ImageInfo {
+            id: self.id,
+            upload_date: self.upload_date,
+            created_date: self.created_date,
+            uploader: self.uploader,
+            location: self.location,
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct ImageInfo {
+    id: String,
+    upload_date: String,
+    created_date: Option<String>,
+    uploader: String,
+    location: Option<String>,
+}
+impl Default for ImageInfo {
+    fn default() -> Self {
+        Self {
+            id: "".into(),
+            upload_date: "".into(),
+            created_date: None,
+            uploader: "".into(),
+            location: None,
+        }
+    }
 }
 
 //Fetch images from database
@@ -108,7 +142,13 @@ where
     W: Fn() -> String + 'static,
 {
     use crate::components::loading::Loading_Triangle;
-    let image = create_resource(image_id, get_image);
+    let image = create_local_resource(image_id, get_image);
+    let image_info = Signal::derive(move||
+        if let Some(Ok(img))=image.get(){
+            img.into_info()
+        }else{
+            ImageInfo::default()
+        });
     let people = create_resource(move || (), |_| async { vec![1, 2, 3, 4] });
     let empty = "   --".to_string();
 
@@ -168,43 +208,43 @@ where
                     <div class="upload-info">
                         <h3>"Image info:"</h3>
                         <span><i class="fas fa-camera"></i>
-                            {if let Some(Ok(img))=image.get(){if let Some(date) = img.created_date {date}else{empty.clone()}} else {empty.clone()}}
+                            {if let Some(date) = image_info().created_date {date}else{empty.clone()}}
                         </span>
                         <span><i class="fas fa-map-marker-alt"></i>
-                            {if let Some(Ok(img))=image.get(){if let Some(location) = img.location {location}else{empty.clone()}} else {empty.clone()}}
+                            {if let Some(location) = image_info().location {location}else{empty.clone()}}
                         </span>
                         <button on:click=move |_| {set_editing_image_info(true);}><i class="fas fa-pen"></i>"Edit"</button>
-                        {match image.get(){
-                            Some(Ok(img))=>view!{
-                                    <ImageInfoEdit
-                                    image=img
-                                    on_close=move||set_editing_image_info(false)
-                                    open=editing_image_info
-                                    update_image=move |new_image|{
-                                        //image.set(Ok(new_image)); 
-                                        image.update(|mut image|{
-                                            if let Some(Ok(ref mut img))= &mut image{
-                                                img.created_date=new_image.created_date.clone();
-                                                img.location=new_image.location.clone();
-                                            };
-                                            logging::log!(
-                                                "{:?}",
-                                                image
-                                            );
-                                        });
-                                        //image.refetch();
-                                        logging::log!("Updating!");}/>
-                                },
-                            _=>().into_view(),
+                        {if image_info().id.is_empty().not(){
+                            view!{
+                                <ImageInfoEdit
+                                image=image_info()
+                                on_close=move||set_editing_image_info(false)
+                                open=editing_image_info
+                                update_image=move |new_image_info|{
+                                    //image.set(Ok(new_image)); 
+                                    image.update(|mut image|{
+                                        if let Some(Ok(ref mut img))= &mut image{
+                                            img.created_date=new_image_info.created_date.clone();
+                                            img.location=new_image_info.location.clone();
+                                        };logging::log!(
+                                            "{:?}",
+                                            image
+                                        );
+                                    });
+                                    //image.refetch();
+                                    logging::log!("Updating!");}/>
+                            }
+                        }else{
+                            ().into_view()
                         }}
                     </div>
                     <div class="upload-info">
                         <h3>"Uploaded by:"</h3>
                         <span><i class="fas fa-user-circle"></i>
-                            {if let Some(Ok(img))=image.get(){img.uploader}else{"--".to_string()}}    
+                            {if !image_info().uploader.is_empty(){image_info().uploader}else{empty.clone()}}    
                         </span>
                         <span><i class="fas fa-calendar-day"></i>
-                            {if let Some(Ok(img))=image.get(){img.upload_date}else{"--".to_string()}}
+                            {if !image_info().upload_date.is_empty(){image_info().upload_date}else{empty.clone()}}
                         </span>
                         <button>"Delete image"</button>
                     </div>
@@ -217,7 +257,7 @@ where
 
 #[component]
 fn image_info_edit<F, W, I>(
-    image: ImageDb,
+    image: ImageInfo,
     on_close: F,
     open: W,
     update_image: I,
@@ -225,7 +265,7 @@ fn image_info_edit<F, W, I>(
 where
     F: Fn() + 'static + Clone,
     W: Fn() -> bool + 'static,
-    I: Fn(ImageDb) + 'static + Clone,
+    I: Fn(ImageInfo) + 'static + Clone,
 {
     let (updating_image_info, set_updating_image_info) = create_signal(false);
     let (update_error, set_update_error) = create_signal(None);
