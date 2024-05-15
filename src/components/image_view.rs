@@ -92,12 +92,35 @@ pub async fn get_image(image_id: String) -> Result<ImageDb, ServerFnError> {
 //Fetch images from database
 #[server(DeleteImage, "/api")]
 pub async fn delete_image(image_id: String) -> Result<ImageDb, ServerFnError> {
-    auth::logged_in().await?;
-    // auth::authorized("admin").await?;
-
+    let user = auth::logged_in().await?;
+    let admin = auth::authorized("admin").await;
+    
     //DB connection
     use crate::app::ssr::*;
     let pool = pool()?;
+
+    //Check if user is uploader
+    let uploader:bool = sqlx::query_scalar("SELECT uploadedBy=? FROM files WHERE id = ?")
+        .bind(user.id)
+        .bind(image_id.clone())
+        .fetch_one(&pool)
+        .await?;
+
+    //Check for uploader or admin access
+    if !uploader {
+        match admin {
+            Ok(_) => {}
+            Err(_) => {
+                return Err(ServerFnError::ServerError(
+                    "You are not authorized to delete this image".to_string(),
+                ))
+            }
+        }
+    }
+
+    
+
+    
 
     //Fetch image
     let img = sqlx::query_as::<_, ImageDb>(
