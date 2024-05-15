@@ -89,6 +89,28 @@ pub async fn get_image(image_id: String) -> Result<ImageDb, ServerFnError> {
     Ok(img)
 }
 
+//Fetch images from database
+#[server(DeleteImage, "/api")]
+pub async fn delete_image(image_id: String) -> Result<ImageDb, ServerFnError> {
+    auth::logged_in().await?;
+    // auth::authorized("admin").await?;
+
+    //DB connection
+    use crate::app::ssr::*;
+    let pool = pool()?;
+
+    //Fetch image
+    let img = sqlx::query_as::<_, ImageDb>(
+        "DELETE FROM files WHERE files.id = ?",
+    )
+    .bind(image_id)
+    .fetch_one(&pool)
+    .await?;
+
+    Ok(img)
+}
+
+
 //Update image info
 #[server(UpdateImageInfo, "/api")]
 pub async fn update_image_info(image_id: String, created_date: Option<String>, location: Option<String>) -> Result<(), ServerFnError> {
@@ -152,6 +174,9 @@ where
     let (empty, _set_empty) = create_signal("   --".to_string());
 
     let (editing_image_info, set_editing_image_info) = create_signal(false);
+
+
+    let del_image = create_action(|image_id: &W| {delete_image(image_id())});
 
     view! {
         <Suspense fallback = move|| view!{
@@ -223,7 +248,8 @@ where
                         <span><i class="fas fa-calendar-day"></i>
                             {move || if !image_info().upload_date.is_empty(){image_info().upload_date}else{empty()}}
                         </span>
-                        <button>"Delete image"</button>
+                        <button on:click=move |_| {del_image.dispatch(image_id)}>"Delete image"</button>
+
                     </div>
                 </div>
             </div>
