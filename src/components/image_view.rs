@@ -89,7 +89,7 @@ pub async fn get_image(image_id: String) -> Result<ImageDb, ServerFnError> {
     Ok(img)
 }
 
-//Fetch images from database
+//Delete image from database
 #[server(DeleteImage, "/api")]
 pub async fn delete_image(image_id: String) -> Result<ImageDb, ServerFnError> {
     let user = auth::logged_in().await?;
@@ -117,10 +117,6 @@ pub async fn delete_image(image_id: String) -> Result<ImageDb, ServerFnError> {
             }
         }
     }
-
-    
-
-    
 
     //Fetch image
     let img = sqlx::query_as::<_, ImageDb>(
@@ -200,6 +196,7 @@ where
 
 
     let del_image = create_action(|image_id: &W| {delete_image(image_id())});
+    let (delete_prompt, set_delete_prompt) = create_signal(false);
 
     view! {
         <Suspense fallback = move|| view!{
@@ -271,7 +268,23 @@ where
                         <span><i class="fas fa-calendar-day"></i>
                             {move || if !image_info().upload_date.is_empty(){image_info().upload_date}else{empty()}}
                         </span>
-                        <button on:click=move |_| {del_image.dispatch(image_id)}>"Delete image"</button>
+                        {
+                           move || if !delete_prompt.get() {
+                                view!{
+                                    <div>
+                                    <button on:click=move |_| {set_delete_prompt(true)}>"Delete image"</button>
+                                    </div>
+                                }
+                            } else {
+                                view!{
+                                    <div>
+                                    <button style="background-color: red;" on:click=move |_| {del_image.dispatch(image_id));}>"Delete"</button>
+                                    <button style="margin-left: 4px; background-color: gray;" on:click=move |_| {set_delete_prompt(false)}>"Cancel"</button>
+                                    </div>
+                                }
+                            }
+                        }
+                        
 
                     </div>
                 </div>
