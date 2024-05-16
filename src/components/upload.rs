@@ -1,8 +1,13 @@
+use std::thread;
+
 #[cfg(feature = "ssr")]
 use crate::auth;
 use futures::future; // 0.3.5
 use image::{DynamicImage, GrayImage};
-use leptos::{html::Input, *};
+use leptos::{
+    html::{wbr, Input},
+    *,
+};
 use rustface::{Detector, ImageData};
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::*;
@@ -12,6 +17,12 @@ use web_sys::*;
 )]
 pub struct MediaPayload {
     data: Vec<(String, Vec<u8>)>,
+}
+
+#[derive(Debug, Clone)]
+pub struct NameField {
+    name: String,
+    id: usize,
 }
 
 #[server(Faces, "/api", "Cbor")]
@@ -99,7 +110,7 @@ pub async fn upload_media_server(
 }
 
 async fn upload(
-    payload: Vec<(String, String, usize)>,
+    payload: Vec<(String, String, RwSignal<Vec<NameField>>)>,
     set_done: WriteSignal<usize>,
     done_count: ReadSignal<usize>,
 ) -> Result<(), ServerFnError> {
@@ -226,44 +237,38 @@ pub fn UploadMedia() -> impl IntoView {
                 {
                     move || if !media().is_empty() {
 
-                        media().iter().map(|(filename, encoded_string, name_count)| {
+                        media().iter().map(|(filename, encoded_string, names)| {
                             let f = filename.clone();
                             let e = encoded_string.clone();
-                            let nc = name_count.clone();
-                            let (count, set_count) = create_signal(nc);
-
+                            let name_list = names.clone();
                             view! {
                                     <div class="upload">
                                         <div class="horizontal">
                                             <img src={format!("data:image/png;base64,{}", e)}/>
                                             <div>
                                             <For
-                                                each=move || 1..=count.get()
-                                                key=|idx| *idx
-                                                children=move |_| {
+                                                each=move || name_list.get()
+                                                key=|idx| idx.id
+                                                children=move |idx| {
                                                     view!{
-                                                        <input></input><br/>
+                                                        <input
+                                                            prop:value=idx.name
+                                                            on:input=move|ev| {
+                                                                name_list.update(|v| v[idx.id].name=event_target_value(&ev));
+                                                            }
+
+                                                            ></input><br/>
                                                     }
                                                 }
                                             />
                                                 <button class="controls" on:click=move |_| {
-                                                    set_count.update(|n| *n += 1);
+                                                    name_list.update(|v| v.push(NameField{name:"".to_string(), id: v.len()}));
+                                                    logging::log!("{}", name_list.get_untracked().len());
                                                 }>+</button>
                                                 <button class="controls" on:click=move |_| {
-                                                    set_count.update(|n| *n -= 1);
+                                                    name_list.update(|v| { v.pop(); });
+                                                    logging::log!("{}", name_list.get_untracked().len());
                                                 }>-</button>
-
-                                            /*{
-                                                for _n in 0..count.get() {
-                                                    return view! {
-                                                        <div>
-                                                            <input></input><br/>
-                                                         </div>
-                                                        }
-                                                }
-
-
-                                            }*/
                                             </div>
                                         </div>
                                         <button on:click=move |_| {
@@ -299,30 +304,45 @@ async fn convert_file_to_b64(
     file: File,
     set_memory: WriteSignal<usize>,
     memory_count: ReadSignal<usize>,
-) -> (String, String, usize) {
+) -> (String, String, RwSignal<Vec<NameField>>) {
     let gloo_file = gloo::file::File::from(file);
 
     let bytes = gloo::file::futures::read_as_bytes(&gloo_file)
         .await
         .expect_throw("Failed to read file");
     let encoded_string = base64::encode(&bytes);
+    let encoded_string_thread = encoded_string.clone();
+    let names: RwSignal<Vec<NameField>> = create_rw_signal(Vec::new());
 
-    let count = match faces(encoded_string.clone()).await {
-        Ok(c) => c,
-        Err(_err) => 0, // Handle error?
-    }; // face count
+    spawn_local(async move {
+        let count = match faces(encoded_string_thread).await {
+            Ok(c) => c,
+            Err(_err) => 0, // Handle error?
+        }; // face count
 
-    logging::log!("{}", count);
+        logging::log!("{}", count);
 
-    set_memory(memory_count.get_untracked() + 1);
-    (gloo_file.name(), encoded_string, count)
+        set_memory(memory_count.get_untracked() + 1);
+
+        let mut names_init: Vec<NameField> = Vec::new();
+        for i in 0..count {
+            names_init.push(NameField {
+                name: "".to_string(),
+                id: i,
+            });
+        }
+
+        names.set(names_init);
+    });
+
+    (gloo_file.name(), encoded_string, names)
 }
 
 async fn convert_files_to_b64(
     files: FileList,
     set_memory: WriteSignal<usize>,
     memory_count: ReadSignal<usize>,
-) -> Vec<(String, String, usize)> {
+) -> Vec<(String, String, RwSignal<Vec<NameField>>)> {
     let mut res = Vec::new();
     for i in 0..files.length() {
         let file = files.get(i).expect_throw("Failed to get file");
