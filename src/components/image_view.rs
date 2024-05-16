@@ -278,7 +278,7 @@ where
                             } else {
                                 view!{
                                     <div>
-                                    <button style="background-color: red;" on:click=move |_| {del_image.dispatch(image_id));}>"Delete"</button>
+                                    <button style="background-color: red;" on:click=move |_| {del_image.dispatch(image_id);}>"Delete"</button>
                                     <button style="margin-left: 4px; background-color: gray;" on:click=move |_| {set_delete_prompt(false)}>"Cancel"</button>
                                     </div>
                                 }
