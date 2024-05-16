@@ -1,13 +1,8 @@
-use std::thread;
-
 #[cfg(feature = "ssr")]
 use crate::auth;
 use futures::future; // 0.3.5
 use image::{DynamicImage, GrayImage};
-use leptos::{
-    html::{wbr, Input},
-    *,
-};
+use leptos::{html::Input, *};
 use rustface::{Detector, ImageData};
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::*;
@@ -64,6 +59,7 @@ fn detect_faces(detector: &mut dyn Detector, gray: &GrayImage) -> usize {
 pub async fn upload_media_server(
     filename: String,
     encoded_string: String,
+    names: Vec<String>,
 ) -> Result<(), ServerFnError> {
     let user = auth::logged_in().await?;
     use crate::db::ssr::pool;
@@ -90,7 +86,7 @@ pub async fn upload_media_server(
         "INSERT INTO files (id, path, uploadDate, createdDate, uploadedBy) 
         VALUES (?, ?, datetime('now', 'localtime'), ?, ?)",
     ) //SELECT date('now', 'localtime');
-    .bind(uuid)
+    .bind(&uuid)
     .bind(path)
     //Randomize data for testing
     .bind(
@@ -106,6 +102,21 @@ pub async fn upload_media_server(
     .execute(&pool)
     .await?;
 
+    // Find userIDs from names
+    for name in names {
+        let user = match auth::ssr::SqlUser::get_from_username(name.clone(), &pool).await {
+            Some(u) => u,
+            None => continue,
+        };
+
+        // Insert name tags
+        sqlx::query("INSERT INTO userFile (userID, fileID) VALUES (?, ?)")
+            .bind(user.id)
+            .bind(&uuid)
+            .execute(&pool)
+            .await?;
+    }
+
     Ok(())
 }
 
@@ -120,10 +131,15 @@ async fn upload(
 
     let mut calls = Vec::new();
 
-    for (filename, encoded_string, _) in payload {
+    for (filename, encoded_string, names) in payload {
         calls.push(upload_wrapper(
             filename,
             encoded_string,
+            names
+                .get_untracked()
+                .iter()
+                .map(|nf| nf.name.clone())
+                .collect(),
             set_done,
             done_count,
         ));
@@ -142,10 +158,11 @@ async fn upload(
 async fn upload_wrapper(
     filename: String,
     encoded_string: String,
+    names: Vec<String>,
     set_done: WriteSignal<usize>,
     done_count: ReadSignal<usize>,
 ) -> Result<(), ServerFnError> {
-    return match upload_media_server(filename, encoded_string).await {
+    return match upload_media_server(filename, encoded_string, names).await {
         Ok(_) => {
             set_done(done_count.get_untracked() + 1);
             logging::log!("{}", done_count.get_untracked());
