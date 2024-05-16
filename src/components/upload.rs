@@ -213,6 +213,7 @@ pub fn UploadMedia() -> impl IntoView {
         set_memory(0);
         set_error("".to_string());
         spawn_local(async move {
+            set_media(Vec::new());
             let elem = ev.target().unwrap().unchecked_into::<HtmlInputElement>();
             let files = elem.files();
 
@@ -328,6 +329,7 @@ pub fn UploadMedia() -> impl IntoView {
     }
 }
 
+const FACE_PADDING: i32 = 25;
 fn img_from_bounds(imgb64: String, bounds: Option<Bbox>) -> String {
     let mut image = decode_image(imgb64.clone());
 
@@ -336,13 +338,28 @@ fn img_from_bounds(imgb64: String, bounds: Option<Bbox>) -> String {
         None => return imgb64,
     };
 
+    let padding: u32 = find_padding(b.x as i32, b.y as i32, FACE_PADDING) as u32;
+
     let mut buf: Vec<u8> = Vec::new();
     image
-        .crop(b.x, b.y, b.w, b.h)
+        .crop(
+            b.x - padding,
+            b.y - padding,
+            b.w + padding * 2,
+            b.h + padding * 2,
+        )
         .write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png)
         .unwrap();
 
     base64::encode(buf)
+}
+
+fn find_padding(x: i32, y: i32, padding: i32) -> i32 {
+    if x - padding >= 0 && y - padding >= 0 {
+        return padding;
+    }
+
+    return find_padding(x, y, padding - 1);
 }
 
 #[cfg(feature = "ssr")]
