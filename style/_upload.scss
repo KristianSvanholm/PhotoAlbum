@@ -12,7 +12,7 @@
 	gap: 5px;
 }
 
-.upload img {
+.smallimg {
 	width: 200px;
 	height: 200px;
 }
@@ -31,4 +31,10 @@
 
 .controls {
     max-width: 50px;
+}
+
+.profilepicture {
+    border-radius: 100;
+    width: 40px;
+    height: 40px;
 }

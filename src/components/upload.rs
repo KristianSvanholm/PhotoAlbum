@@ -1,7 +1,7 @@
 #[cfg(feature = "ssr")]
 use crate::auth;
 use futures::future; // 0.3.5
-use image::{DynamicImage, GrayImage};
+use image::{DynamicImage, GrayImage, ImageFormat, SubImage};
 use leptos::{html::Input, *};
 use rustface::{Detector, ImageData};
 use wasm_bindgen::UnwrapThrowExt;
@@ -14,14 +14,36 @@ pub struct MediaPayload {
     data: Vec<(String, Vec<u8>)>,
 }
 
+#[derive(
+    Debug, Clone, leptos::server_fn::serde::Serialize, leptos::server_fn::serde::Deserialize,
+)]
+pub struct Bbox {
+    x: u32,
+    y: u32,
+    w: u32,
+    h: u32,
+}
+
+impl Bbox {
+    fn rect(r: &rustface::Rectangle) -> Bbox {
+        Bbox {
+            x: r.x() as u32,
+            y: r.y() as u32,
+            w: r.width(),
+            h: r.height(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
-pub struct NameField {
+pub struct Person {
+    bounds: Option<Bbox>,
     name: String,
     id: usize,
 }
 
 #[server(Faces, "/api", "Cbor")]
-pub async fn faces(image_b64: String) -> Result<usize, ServerFnError> {
+pub async fn faces(image_b64: String) -> Result<Vec<Bbox>, ServerFnError> {
     let mut detector = match rustface::create_detector("model.bin") {
         Ok(detector) => detector,
         Err(_) => {
@@ -37,22 +59,22 @@ pub async fn faces(image_b64: String) -> Result<usize, ServerFnError> {
     detector.set_slide_window_step(4, 4);
 
     let image = decode_image(image_b64).to_luma8();
-    let facecount = detect_faces(&mut *detector, &image);
-    Ok(facecount)
+    let faces = detect_faces(&mut *detector, &image);
+    Ok(faces)
 }
 
-#[cfg(feature = "ssr")]
 fn decode_image(encoded_string: String) -> DynamicImage {
     let bytes = base64::decode(encoded_string).expect("Failed to decode image");
     image::load_from_memory(&bytes).expect("Failed to load image")
 }
 
 #[cfg(feature = "ssr")]
-fn detect_faces(detector: &mut dyn Detector, gray: &GrayImage) -> usize {
+fn detect_faces(detector: &mut dyn Detector, gray: &GrayImage) -> Vec<Bbox> {
     let (width, height) = gray.dimensions();
     let image = ImageData::new(gray, width, height);
     let faces = detector.detect(&image);
-    faces.len()
+
+    faces.iter().map(|fi| Bbox::rect(fi.bbox())).collect()
 }
 
 #[server(Upload, "/api", "Cbor")]
@@ -121,7 +143,7 @@ pub async fn upload_media_server(
 }
 
 async fn upload(
-    payload: Vec<(String, String, RwSignal<Vec<NameField>>)>,
+    payload: Vec<(String, String, RwSignal<Vec<Person>>)>,
     set_done: WriteSignal<usize>,
     done_count: ReadSignal<usize>,
 ) -> Result<(), ServerFnError> {
@@ -261,13 +283,14 @@ pub fn UploadMedia() -> impl IntoView {
                             view! {
                                     <div class="upload">
                                         <div class="horizontal">
-                                            <img src={format!("data:image/png;base64,{}", e)}/>
+                                            <img class="smallimg" src={format!("data:image/png;base64,{}", e)}/>
                                             <div>
                                             <For
                                                 each=move || name_list.get()
                                                 key=|idx| idx.id
                                                 children=move |idx| {
                                                     view!{
+                                                        <img class="profilepicture" src={format!("data:image/png;base64,{}", img_from_bounds(e.clone(), idx.bounds))} />
                                                         <input
                                                             prop:value=idx.name
                                                             on:input=move|ev| {
@@ -279,12 +302,10 @@ pub fn UploadMedia() -> impl IntoView {
                                                 }
                                             />
                                                 <button class="controls" on:click=move |_| {
-                                                    name_list.update(|v| v.push(NameField{name:"".to_string(), id: v.len()}));
-                                                    logging::log!("{}", name_list.get_untracked().len());
+                                                    name_list.update(|v| v.push(Person{name:"".to_string(), id: v.len(), bounds: None}));
                                                 }>+</button>
                                                 <button class="controls" on:click=move |_| {
                                                     name_list.update(|v| { v.pop(); });
-                                                    logging::log!("{}", name_list.get_untracked().len());
                                                 }>-</button>
                                             </div>
                                         </div>
@@ -307,6 +328,23 @@ pub fn UploadMedia() -> impl IntoView {
     }
 }
 
+fn img_from_bounds(imgb64: String, bounds: Option<Bbox>) -> String {
+    let mut image = decode_image(imgb64.clone());
+
+    let b = match bounds {
+        Some(bounds) => bounds,
+        None => return imgb64,
+    };
+
+    let mut buf: Vec<u8> = Vec::new();
+    image
+        .crop(b.x, b.y, b.w, b.h)
+        .write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png)
+        .unwrap();
+
+    base64::encode(buf)
+}
+
 #[cfg(feature = "ssr")]
 fn extract_ext(filename: String) -> Option<String> {
     let parts = filename.split(".").collect::<Vec<_>>();
@@ -321,7 +359,7 @@ async fn convert_file_to_b64(
     file: File,
     set_memory: WriteSignal<usize>,
     memory_count: ReadSignal<usize>,
-) -> (String, String, RwSignal<Vec<NameField>>) {
+) -> (String, String, RwSignal<Vec<Person>>) {
     let gloo_file = gloo::file::File::from(file);
 
     let bytes = gloo::file::futures::read_as_bytes(&gloo_file)
@@ -329,23 +367,24 @@ async fn convert_file_to_b64(
         .expect_throw("Failed to read file");
     let encoded_string = base64::encode(&bytes);
     let encoded_string_thread = encoded_string.clone();
-    let names: RwSignal<Vec<NameField>> = create_rw_signal(Vec::new());
+    let names: RwSignal<Vec<Person>> = create_rw_signal(Vec::new());
 
     spawn_local(async move {
-        let count = match faces(encoded_string_thread).await {
+        let faces = match faces(encoded_string_thread).await {
             Ok(c) => c,
-            Err(_err) => 0, // Handle error?
-        }; // face count
+            Err(_err) => Vec::new(),
+        };
 
-        logging::log!("{}", count);
+        logging::log!("{}", faces.len());
 
         set_memory(memory_count.get_untracked() + 1);
 
-        let mut names_init: Vec<NameField> = Vec::new();
-        for i in 0..count {
-            names_init.push(NameField {
+        let mut names_init: Vec<Person> = Vec::new();
+        for i in 0..faces.len() {
+            names_init.push(Person {
                 name: "".to_string(),
                 id: i,
+                bounds: Some(faces[i].clone()),
             });
         }
 
@@ -359,7 +398,7 @@ async fn convert_files_to_b64(
     files: FileList,
     set_memory: WriteSignal<usize>,
     memory_count: ReadSignal<usize>,
-) -> Vec<(String, String, RwSignal<Vec<NameField>>)> {
+) -> Vec<(String, String, RwSignal<Vec<Person>>)> {
     let mut res = Vec::new();
     for i in 0..files.length() {
         let file = files.get(i).expect_throw("Failed to get file");
