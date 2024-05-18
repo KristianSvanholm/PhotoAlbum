@@ -1,4 +1,5 @@
 use leptos::{html::{Nav, ToHtmlElement}, *};
+use leptonic::{components::root::Root, components::theme::LeptonicTheme};
 use leptos_meta::*;
 use leptos_router::*;
 use leptos_use::use_event_listener;
@@ -67,6 +68,7 @@ pub fn App() -> impl IntoView {
     provide_meta_context();
 
     view! {
+        <Root default_theme=LeptonicTheme::default()>
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.ico"/>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
         <Stylesheet id="leptos" href="/pkg/photo-album.css"/>
@@ -173,6 +175,7 @@ pub fn App() -> impl IntoView {
                 </Routes>
             </main>
         </Router>
+        </Root>
     }
 }
 

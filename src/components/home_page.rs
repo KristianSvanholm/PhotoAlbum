@@ -1,3 +1,4 @@
+use leptonic::components::select::Multiselect;
 use leptos::html::Input;
 use leptos::html::Select;
 use leptos::*;
@@ -32,7 +33,9 @@ pub fn HomePage() -> impl IntoView
     let select_ref = create_node_ref::<Select>();
     let select_ref_2 = create_node_ref::<Select>();
     let input_ref = create_node_ref::<Input>();
-    let input_ref_2 = create_node_ref::<Input>();
+
+    let (selected_multi, set_selected_multi) = create_signal(vec![]);
+
 
     view! {
         <button
@@ -69,26 +72,31 @@ pub fn HomePage() -> impl IntoView
             }
         }).collect::<Vec<_>>()}
         </select>
-        <input _ref=input_ref_2 type="text" placeholder="Filter by people (comma separated)"/>
+        <Multiselect
+            options=vec![1,2,3,4,5]
+            search_text_provider=move |o| format!("{o}")
+            render_option=move |o| format!("{o:?}")
+            selected=selected_multi
+            set_selected=move |v| set_selected_multi.set(v)
+        />
         <button
             on:click=move |_| {
                 let filter = select_ref.get().unwrap().value();
                 let filter_2 = select_ref_2.get().unwrap().value();
                 let i_tags = input_ref.get().unwrap().value();
-                let i_people = input_ref_2.get().unwrap().value();
+                let i_people = selected_multi.get_untracked();
 
                 let valid_tags = i_tags.split(",").map(|tag| tag.trim().to_string()).collect::<Vec<String>>();      
-                let valid_people = i_people.split(",").map(|person| person.trim().parse::<i64>().unwrap_or(0)).collect::<Vec<i64>>();
 
                 let mut valid_tag_filter: Option<(String, Vec<String>)> = Some((filter, valid_tags.clone()));
-                let mut valid_people_filter: Option<(String, Vec<i64>)> = Some((filter_2, valid_people.clone()));
+                let mut valid_people_filter: Option<(String, Vec<i64>)> = Some((filter_2, i_people.clone()));
 
                 
                 if valid_tags.is_empty() || valid_tags.iter().all(|tag| tag.is_empty()){
                     valid_tag_filter = None;
                 }
                 
-                if valid_people.is_empty() || valid_people.iter().all(|person| *person == 0){
+                if i_people.is_empty() || i_people.iter().all(|person| *person == 0){
                     valid_people_filter = None;
                 }
 
