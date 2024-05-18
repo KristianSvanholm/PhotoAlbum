@@ -7,6 +7,7 @@ body {
 	background-color: color.$background-color;
 	color: color.$text-on-background;
 	overflow-x: hidden; //Remove minor left-right scroll 
+	overflow-y: hidden;
 }
 
 //Default button layout
@@ -53,7 +54,7 @@ button {
 }
 
 .main {
-	min-height: 100vh;
+	min-height: 98vh;
 	height: fit-content;
 }
 
