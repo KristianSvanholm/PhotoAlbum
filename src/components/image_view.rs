@@ -89,46 +89,6 @@ pub async fn get_image(image_id: String) -> Result<ImageDb, ServerFnError> {
     Ok(img)
 }
 
-//Delete image from database
-#[server(DeleteImage, "/api")]
-pub async fn delete_image(image_id: String) -> Result<ImageDb, ServerFnError> {
-    let user = auth::logged_in().await?;
-    let admin = auth::authorized("admin").await;
-    
-    //DB connection
-    use crate::app::ssr::*;
-    let pool = pool()?;
-
-    //Check if user is uploader
-    let uploader:bool = sqlx::query_scalar("SELECT uploadedBy=? FROM files WHERE id = ?")
-        .bind(user.id)
-        .bind(image_id.clone())
-        .fetch_one(&pool)
-        .await?;
-
-    //Check for uploader or admin access
-    if !uploader {
-        match admin {
-            Ok(_) => {}
-            Err(_) => {
-                return Err(ServerFnError::ServerError(
-                    "You are not authorized to delete this image".to_string(),
-                ))
-            }
-        }
-    }
-
-    //Fetch image
-    let img = sqlx::query_as::<_, ImageDb>(
-        "DELETE FROM files WHERE files.id = ?",
-    )
-    .bind(image_id)
-    .fetch_one(&pool)
-    .await?;
-
-    Ok(img)
-}
-
 
 //Update image info
 #[server(UpdateImageInfo, "/api")]
@@ -195,8 +155,7 @@ where
     let (editing_image_info, set_editing_image_info) = create_signal(false);
 
 
-    let del_image = create_action(|image_id: &W| {delete_image(image_id())});
-    let (delete_prompt, set_delete_prompt) = create_signal(false);
+   
 
     view! {
         <Suspense fallback = move|| view!{
@@ -268,24 +227,7 @@ where
                         <span><i class="fas fa-calendar-day"></i>
                             {move || if !image_info().upload_date.is_empty(){image_info().upload_date}else{empty()}}
                         </span>
-                        {
-                           move || if !delete_prompt.get() {
-                                view!{
-                                    <div>
-                                    <button on:click=move |_| {set_delete_prompt(true)}>"Delete image"</button>
-                                    </div>
-                                }
-                            } else {
-                                view!{
-                                    <div>
-                                    <button style="background-color: red;" on:click=move |_| {del_image.dispatch(image_id);}>"Delete"</button>
-                                    <button style="margin-left: 4px; background-color: gray;" on:click=move |_| {set_delete_prompt(false)}>"Cancel"</button>
-                                    </div>
-                                }
-                            }
-                        }
                         
-
                     </div>
                 </div>
             </div>

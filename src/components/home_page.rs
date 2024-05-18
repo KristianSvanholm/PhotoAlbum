@@ -3,6 +3,21 @@ use crate::components::feed::InfiniteFeed;
 use crate::components::upload::UploadMedia;
 use crate::components::image_view::ImageView;
 use crate::components::dialog::Dialog;
+use crate::auth;
+use serde::Deserialize;
+use serde::Serialize;
+
+//Image struct for images from DB
+#[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
+pub struct ImageDb {
+    id: String,
+    path: String,
+    upload_date: String,
+    created_date: Option<String>,
+    uploader: String,
+    location: Option<String>,
+}
 
 #[server(NextImageId, "/api")]
 pub async fn next_prev_image_id(prev_id: String, offset: i16) -> Result<Option<String>, ServerFnError> {
@@ -36,6 +51,46 @@ pub async fn next_prev_image_id(prev_id: String, offset: i16) -> Result<Option<S
     Ok(new_id)
 }
 
+//Delete image from database
+#[server(DeleteImage, "/api")]
+pub async fn delete_image(image_id: String) -> Result<ImageDb, ServerFnError> {
+    let user = auth::logged_in().await?;
+    let admin = auth::authorized("admin").await;
+    
+    //DB connection
+    use crate::app::ssr::*;
+    let pool = pool()?;
+
+    //Check if user is uploader
+    let uploader:bool = sqlx::query_scalar("SELECT uploadedBy=? FROM files WHERE id = ?")
+        .bind(user.id)
+        .bind(image_id.clone())
+        .fetch_one(&pool)
+        .await?;
+
+    //Check for uploader or admin access
+    if !uploader {
+        match admin {
+            Ok(_) => {}
+            Err(_) => {
+                return Err(ServerFnError::ServerError(
+                    "You are not authorized to delete this image".to_string(),
+                ))
+            }
+        }
+    }
+
+    //Fetch image
+    let img = sqlx::query_as::<_, ImageDb>(
+        "DELETE FROM files WHERE files.id = ?",
+    )
+    .bind(image_id)
+    .fetch_one(&pool)
+    .await?;
+
+    Ok(img)
+}
+
 #[component]
 pub fn HomePage() -> impl IntoView
 {
@@ -64,6 +119,9 @@ pub fn HomePage() -> impl IntoView
         }
     );
 
+    let del_image = create_action(|image_id: &String| {delete_image(image_id.to_string())});
+    let (delete_prompt, set_delete_prompt) = create_signal(false);
+
     view! {
         <button
             class = "floating displayFeed"
@@ -77,6 +135,35 @@ pub fn HomePage() -> impl IntoView
             open=move || image_id.get().is_some()
             close_on_outside=true
             close_button=false>
+            {
+                move || if !delete_prompt.get() {
+                     view!{
+                         <div>
+                         <button on:click=move |_| {set_delete_prompt(true)}>"Delete image"</button>
+                         </div>
+                     }
+                 } else {
+                     view!{
+                         <div>
+                         <button style="background-color: red;" on:click=move |_| {
+                            //Initiate deletion
+                            del_image.dispatch(image_id.get().unwrap_or_default());
+                            set_delete_prompt(false);
+                            //Set to next or previous image after deletion, or close if it is the only image
+                            if !next_image_id.get().is_none() || !next_image_id.get().unwrap().is_none() {
+                                set_image_id(next_image_id.get().unwrap());
+                            } else if !prev_image_id.get().is_none() || !prev_image_id.get().unwrap().is_none() {
+                                set_image_id(prev_image_id.get().unwrap());
+                            } else {
+                                set_image_id(None);
+                            }
+
+                        }>"Delete"</button>
+                         <button style="margin-left: 4px; background-color: gray;" on:click=move |_| {set_delete_prompt(false)}>"Cancel"</button>
+                         </div>
+                     }
+                 }
+             }
             <ImageView image_id=move || image_id.get().unwrap_or_default()/>
             <div class="bottom-buttons">
                 <button on:click=move |_| set_image_id(prev_image_id.get().unwrap())
