@@ -40,7 +40,11 @@ leptos-use = "0.10.2"
 lazy_static = "1.4.0"
 axum-login = { version = "0.15.1", optional = true }
 tower-sessions-sqlx-store = { version = "0.12.0", features = ["sqlite"],  optional = true }
-time = { version = "0.3.30",  optional = true }
+time = { version = "0.3.36",  optional = true }
+rustface = "0.1.7"
+image = "0.25.1"
+imageproc = "0.24.0"
+leptonic = { git = "https://github.com/kristiansvanholm/leptonic", branch = "main", features = ["nightly"]}
 
 [dev-dependencies]
 axum-test = "14.8.0"
@@ -50,7 +54,7 @@ cookie = "0.18"
 
 [features]
 default = ["ssr"]
-hydrate = ["leptos/hydrate", "leptos_meta/hydrate", "leptos_router/hydrate"]
+hydrate = ["leptonic/hydrate", "leptos/hydrate", "leptos_meta/hydrate", "leptos_router/hydrate"]
 ssr = [
 	"dep:axum",
 	"dep:tower",
@@ -72,6 +76,10 @@ ssr = [
 [package.metadata.cargo-all-features]
 denylist = ["axum", "tower", "tower-http", "tokio", "sqlx", "leptos_axum"]
 skip_feature_sets = [["ssr", "hydrate"]]
+
+[package.metadata.leptonic]
+style-dir = "style"
+js-dir = "public/js"
 
 [package.metadata.leptos]
 # The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
