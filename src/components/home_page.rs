@@ -149,10 +149,10 @@ pub fn HomePage() -> impl IntoView
                             //Initiate deletion
                             del_image.dispatch(image_id.get().unwrap_or_default());
                             set_delete_prompt(false);
-                            //Set to next or previous image after deletion, or close if it is the only image
-                            if !next_image_id.get().is_none() || !next_image_id.get().unwrap().is_none() {
+                            //Set to next or previous image after deletion, or close 
+                            if !next_image_id.get().is_none() && !next_image_id.get().unwrap().is_none() {
                                 set_image_id(next_image_id.get().unwrap());
-                            } else if !prev_image_id.get().is_none() || !prev_image_id.get().unwrap().is_none() {
+                            } else if !prev_image_id.get().is_none() && !prev_image_id.get().unwrap().is_none() {
                                 set_image_id(prev_image_id.get().unwrap());
                             } else {
                                 set_image_id(None);
