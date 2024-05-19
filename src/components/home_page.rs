@@ -4,6 +4,7 @@ use crate::components::upload::UploadMedia;
 use crate::components::image_view::ImageView;
 use crate::components::dialog::Dialog;
 use crate::auth;
+use std::fs;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -11,12 +12,7 @@ use serde::Serialize;
 #[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
 pub struct ImageDb {
-    id: String,
     path: String,
-    upload_date: String,
-    created_date: Option<String>,
-    uploader: String,
-    location: Option<String>,
 }
 
 #[server(NextImageId, "/api")]
@@ -53,13 +49,14 @@ pub async fn next_prev_image_id(prev_id: String, offset: i16) -> Result<Option<S
 
 //Delete image from database
 #[server(DeleteImage, "/api")]
-pub async fn delete_image(image_id: String) -> Result<ImageDb, ServerFnError> {
+pub async fn delete_image(image_id: String) -> Result<(), ServerFnError> {
     let user = auth::logged_in().await?;
     let admin = auth::authorized("admin").await;
     
     //DB connection
-    use crate::app::ssr::*;
+    use crate::db::ssr::pool;
     let pool = pool()?;
+
 
     //Check if user is uploader
     let uploader:bool = sqlx::query_scalar("SELECT uploadedBy=? FROM files WHERE id = ?")
@@ -82,13 +79,24 @@ pub async fn delete_image(image_id: String) -> Result<ImageDb, ServerFnError> {
 
     //Fetch image
     let img = sqlx::query_as::<_, ImageDb>(
-        "DELETE FROM files WHERE files.id = ?",
+        "SELECT path FROM files WHERE id = ?;",
     )
-    .bind(image_id)
+    .bind(image_id.to_string())
     .fetch_one(&pool)
     .await?;
 
-    Ok(img)
+    //Delete from database
+    sqlx::query(
+        "DELETE FROM files WHERE id = ?;",
+    )
+    .bind(image_id.clone())
+    .execute(&pool)
+    .await?;
+
+    //Delete from file system
+    fs::remove_file(img.path)?;
+
+    Ok(())
 }
 
 #[component]
