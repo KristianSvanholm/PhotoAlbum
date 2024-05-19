@@ -12,7 +12,7 @@
 	gap: 5px;
 }
 
-.upload img {
+.smallimg {
 	width: 200px;
 	height: 200px;
 }
@@ -20,4 +20,21 @@
 .upload button {
 	width: 200px;
 	height: 30px;
+}
+
+.horizontal {
+    display: flex;
+    flex-direction:row;
+    flex-wrap:nowrap;
+    gap:10px;
+}
+
+.controls {
+    max-width: 50px;
+}
+
+.profilepicture {
+    border-radius: 100;
+    width: 40px;
+    height: 40px;
 }

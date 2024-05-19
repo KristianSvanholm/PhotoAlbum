@@ -35,6 +35,10 @@ create table IF NOT EXISTS files(
 create table IF NOT EXISTS userFile(
     userID INTEGER references users(id) not null,
     fileID uuid references files(id) not null,
+    x INTEGER null,
+    y INTEGER null,
+    width INTEGER null,
+    height INTEGER null,
     primary key(userID, fileID)
 );
 
