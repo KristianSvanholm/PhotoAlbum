@@ -44,7 +44,7 @@ time = { version = "0.3.36",  optional = true }
 rustface = "0.1.7"
 image = "0.25.1"
 imageproc = "0.24.0"
-leptonic = { git = "https://github.com/kristiansvanholm/leptonic", branch = "main", features = ["nightly"]}
+leptonic = { git="https://github.com/kristiansvanholm/leptonic", features = ["nightly"]}
 
 [dev-dependencies]
 axum-test = "14.8.0"
