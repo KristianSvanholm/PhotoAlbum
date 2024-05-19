@@ -46,7 +46,12 @@ pub mod image_filter {
                         }
                         "ONLY" => {
                             let num_tags = valid_tags.len();
-                            conditions.push(format!("(SELECT DISTINCT COUNT(*) FROM tagFile tf WHERE tf.fileID = f.id AND tf.tagString IN ({})) = {}", valid_tags.iter().map(|_| "?").collect::<Vec<_>>().join(","), num_tags));
+                            conditions.push(format!(
+                                "(SELECT COUNT(DISTINCT tf.tagString) FROM tagFile tf WHERE tf.fileID = f.id) = {} AND NOT EXISTS (SELECT 1 FROM tagFile tf WHERE tf.fileID = f.id AND tf.tagString NOT IN ({}))",
+                                num_tags,
+                                valid_tags.iter().map(|_| "?").collect::<Vec<_>>().join(",")
+                            ));
+                            binds.extend(valid_tags.clone());
                             binds.extend(valid_tags);
                         }
                         _ => {}
@@ -86,7 +91,12 @@ pub mod image_filter {
                         }
                         "ONLY" => {
                             let num_people = valid_ids.len();
-                            conditions.push(format!("(SELECT DISTINCT COUNT(*) FROM userFile uf WHERE uf.fileID = f.id AND uf.userID IN ({})) = {}", user_ids.iter().map(|_| "?").collect::<Vec<_>>().join(","), num_people));
+                            conditions.push(format!(
+                                "(SELECT COUNT(DISTINCT uf.userID) FROM userFile uf WHERE uf.fileID = f.id) = {} AND NOT EXISTS (SELECT 1 FROM userFile uf WHERE uf.fileID = f.id AND uf.userID NOT IN ({}))",
+                                num_people,
+                                valid_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",")
+                            ));
+                            binds.extend(valid_ids.iter().map(|id| id.to_string()));
                             binds.extend(valid_ids.iter().map(|id| id.to_string()));
                         }
                         _ => {}
