@@ -196,17 +196,6 @@ async fn upload_wrapper(
 pub fn UploadMedia() -> impl IntoView {
     use wasm_bindgen::JsCast;
 
-    spawn_local(async move {
-        match crate::components::users::get_user_map().await {
-            Ok(u) => {
-                for (key, val) in u {
-                    logging::log!("{} {}", key, val);
-                }
-            }
-            Err(e) => logging::log!("{}", e),
-        };
-    });
-
     let (media, set_media) = create_signal(Vec::new());
 
     let (done_count, set_done) = create_signal(0);

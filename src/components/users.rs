@@ -1,19 +1,19 @@
 use leptos::*;
 
+use serde::{Deserialize, Serialize};
 #[cfg(feature = "ssr")]
 use sqlx::prelude::FromRow;
 
-#[cfg(feature = "ssr")]
-#[derive(Debug, FromRow)]
+#[cfg_attr(feature = "ssr", derive(FromRow))]
+#[derive(Debug, Eq, Ord, PartialEq, PartialOrd, Clone, Serialize, Deserialize)]
 pub struct UserInfo {
     pub id: i64,
     pub username: String,
 }
 
 #[server(GetUserMap, "/api")]
-pub async fn get_user_map() -> Result<std::collections::HashMap<i64, String>, ServerFnError> {
+pub async fn get_user_map() -> Result<Vec<UserInfo>, ServerFnError> {
     use crate::db::ssr::pool;
-    use std::collections::HashMap;
 
     let pool = pool()?;
 
@@ -21,6 +21,5 @@ pub async fn get_user_map() -> Result<std::collections::HashMap<i64, String>, Se
         .fetch_all(&pool)
         .await?;
 
-    let results: HashMap<_, _> = users.iter().map(|x| (x.id, x.username.clone())).collect();
-    Ok(results)
+    Ok(users)
 }
