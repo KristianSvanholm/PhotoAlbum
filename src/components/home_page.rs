@@ -127,7 +127,6 @@ pub fn HomePage() -> impl IntoView
         }
     );
 
-    let del_image = create_action(|image_id: &String| {delete_image(image_id.to_string())});
     let (del_image_id, set_del_image_id) = create_signal(Some("aaaaa".to_string()));
     let (delete_prompt, set_delete_prompt) = create_signal(false);
 
@@ -155,20 +154,27 @@ pub fn HomePage() -> impl IntoView
                      view!{
                          <div>
                          <button style="background-color: red;" on:click=move |_| {
-                            //Send signal to feed for image deletion
-                             set_del_image_id(image_id.get());
-                             //Initiate deletion
-                            del_image.dispatch(image_id.get().unwrap_or_default());
-                            set_delete_prompt(false);
-                            //Set to next or previous image after deletion, or close 
-                            if !next_image_id.get().is_none() && !next_image_id.get().unwrap().is_none() {
-                                set_image_id(next_image_id.get().unwrap());
-                            } else if !prev_image_id.get().is_none() && !prev_image_id.get().unwrap().is_none() {
-                                set_image_id(prev_image_id.get().unwrap());
-                            } else {
-                                set_image_id(None);
-                            }
-
+                            spawn_local(async move{
+                                //Initiate deletion
+                                match delete_image(image_id.get_untracked().unwrap_or_default().to_string()).await{
+                                    Ok(_)=> {
+                                        //Send signal to feed for image deletion
+                                        set_del_image_id(image_id.get_untracked());
+                                        //Set to next or previous image after deletion, or close 
+                                        if !next_image_id.get().is_none() && !next_image_id.get().unwrap().is_none() {
+                                            set_image_id(next_image_id.get().unwrap());
+                                        } else if !prev_image_id.get().is_none() && !prev_image_id.get().unwrap().is_none() {
+                                            set_image_id(prev_image_id.get().unwrap());
+                                        } else {
+                                            set_image_id(None);
+                                        }
+                                    },
+                                    Err(_e) => {
+                                        //TODO: handle delete error
+                                    },
+                                }
+                                set_delete_prompt(false);
+                            });
                         }>"Delete"</button>
                          <button style="margin-left: 4px; background-color: gray;" on:click=move |_| {set_delete_prompt(false)}>"Cancel"</button>
                          </div>

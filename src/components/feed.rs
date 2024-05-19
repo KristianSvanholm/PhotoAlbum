@@ -174,8 +174,8 @@ where
     //Runs through the vector and removes the deleted image
     let _run_delete = create_resource(
         move || send_id.get(), 
-        move |_| async move {set_images.update(|imgs| {imgs.retain(|image| match image {
-            Element::ImageDb(img) => img.get().id != send_id.get().unwrap_or_default(),
+        move |_id| async move {set_images.update(|imgs| {imgs.retain(|image| match image {
+            Element::ImageDb(img) => img.get_untracked().id != send_id.get_untracked().unwrap_or_default(),
             Element::String(_) => true,
         })})});
 
