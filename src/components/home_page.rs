@@ -128,6 +128,7 @@ pub fn HomePage() -> impl IntoView
     );
 
     let del_image = create_action(|image_id: &String| {delete_image(image_id.to_string())});
+    let (del_image_id, set_del_image_id) = create_signal(Some("aaaaa".to_string()));
     let (delete_prompt, set_delete_prompt) = create_signal(false);
 
     view! {
@@ -154,7 +155,9 @@ pub fn HomePage() -> impl IntoView
                      view!{
                          <div>
                          <button style="background-color: red;" on:click=move |_| {
-                            //Initiate deletion
+                            //Send signal to feed for image deletion
+                             set_del_image_id(image_id.get());
+                             //Initiate deletion
                             del_image.dispatch(image_id.get().unwrap_or_default());
                             set_delete_prompt(false);
                             //Set to next or previous image after deletion, or close 
@@ -190,6 +193,11 @@ pub fn HomePage() -> impl IntoView
             <h1>"Upload"</h1>
             <UploadMedia/>
         </Dialog>
-        <InfiniteFeed on_image_click=move |image_id:String| set_image_id(Some(image_id))/>
+
+        <InfiniteFeed 
+        on_image_click=move |image_id:String| set_image_id(Some(image_id)) 
+        send_id=del_image_id
+        />
+        
     }
 }

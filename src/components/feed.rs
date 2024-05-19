@@ -146,7 +146,7 @@ async fn request_wrapper(
 
 //Creates an infinite feed of images
 #[component]
-pub fn infinite_feed<F>(on_image_click: F) -> impl IntoView
+pub fn infinite_feed<F>(on_image_click: F, send_id: ReadSignal<Option<String>>) -> impl IntoView
 where
     F: Fn(String) + 'static + Clone + Copy,
 {
@@ -170,6 +170,15 @@ where
             set_loading(false);
         },
     );
+
+    //Runs through the vector and removes the deleted image
+    let _run_delete = create_resource(
+        move || send_id.get(), 
+        move |_| async move {set_images.update(|imgs| {imgs.retain(|image| match image {
+            Element::ImageDb(img) => img.get().id != send_id.get().unwrap_or_default(),
+            Element::String(_) => true,
+        })})});
+
 
     let el = create_node_ref::<Div>();
 
