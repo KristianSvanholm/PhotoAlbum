@@ -7,40 +7,37 @@ pub async fn login(
     password: String,
     remember: Option<String>,
 ) -> Result<(), ServerFnError> {
-    use crate::auth::ssr::{Credentials, auth};
+    use crate::auth::ssr::{auth, Credentials};
     use crate::session::session_expiry::make_session_long_term;
 
     let mut auth = auth()?;
 
-    let res = auth.authenticate(Credentials{username: username, password: password}).await;
+    let res = auth
+        .authenticate(Credentials {
+            username: username,
+            password: password,
+        })
+        .await;
 
     match res {
-        Ok(user) => {
-            match user{
-                Some(user) => {
-                    auth.login(&user).await?;
-                    if remember.is_some(){
-                        make_session_long_term().await?;
-                    }
-                    Ok(())
-                },
-                None => {
-                    Err(ServerFnError::ServerError(
-                        "Password does not match or user does not exist.".to_string(),
-                    ))
-                },
-            }            
+        Ok(user) => match user {
+            Some(user) => {
+                auth.login(&user).await?;
+                if remember.is_some() {
+                    make_session_long_term().await?;
+                }
+                Ok(())
+            }
+            None => Err(ServerFnError::ServerError(
+                "Password does not match or user does not exist.".to_string(),
+            )),
         },
-        Err(_err) => Err(ServerFnError::ServerError(
-                "An error occured".to_string(),
-        )),
+        Err(_err) => Err(ServerFnError::ServerError("An error occured".to_string())),
     }
 }
 
 #[component]
-pub fn Login(
-    action: Action<Login, Result<(), ServerFnError>>,
-) -> impl IntoView {
+pub fn Login(action: Action<Login, Result<(), ServerFnError>>) -> impl IntoView {
     view! {
         <ActionForm action=action class="loginForm">
             <h1>"Sign in to the photo album:"</h1>
@@ -52,10 +49,10 @@ pub fn Login(
                 name="username"
             />
             <br/>
-            <input 
-                type="password" 
-                placeholder="Password" 
-                name="password" 
+            <input
+                type="password"
+                placeholder="Password"
+                name="password"
             />
             <br/>
             <label class="rememberLabel">

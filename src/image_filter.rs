@@ -59,13 +59,7 @@ pub mod image_filter {
             if !user_ids.is_empty() {
                 let valid_ids: Vec<i64> = user_ids
                     .iter()
-                    .filter_map(|id| {
-                        if *id > 0 {
-                            Some(*id)
-                        } else {
-                            None
-                        }
-                    })
+                    .filter_map(|id| if *id > 0 { Some(*id) } else { None })
                     .collect();
 
                 if !valid_ids.is_empty() {
@@ -75,7 +69,11 @@ pub mod image_filter {
                         "HAS" => {
                             conditions.push(format!(
                                 "uf.userID IN ({})",
-                                valid_ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(",")
+                                valid_ids
+                                    .iter()
+                                    .map(|id| id.to_string())
+                                    .collect::<Vec<_>>()
+                                    .join(",")
                             ));
                             binds.extend(valid_ids.iter().map(|id| id.to_string()));
                         }
@@ -106,7 +104,8 @@ pub mod image_filter {
         limit: usize,
         offset: usize,
     ) -> (Vec<String>, Vec<String>, Vec<String>) {
-        let (conditions, joins, mut binds) = prepare_filtered_query(tag_filter, people_filter).await;
+        let (conditions, joins, mut binds) =
+            prepare_filtered_query(tag_filter, people_filter).await;
         binds.push(limit.to_string());
         binds.push(offset.to_string());
 

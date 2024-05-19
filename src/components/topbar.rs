@@ -1,14 +1,14 @@
-use leptos::*;
 use crate::auth::User;
+use leptos::*;
 
 #[component]
 pub fn TopBar(_user: User) -> impl IntoView {
     /*
-    
+
     use crate::auth::get_user;
     use crate::components::{signup::Signup, logout::Logout, login::Login};
 
-    
+
     // All routes accessible from navigation bar
     view! {
         <nav>
@@ -53,7 +53,7 @@ pub fn TopBar(_user: User) -> impl IntoView {
             </Transition>
 
         </nav>
-        
+
     }
     */
 }

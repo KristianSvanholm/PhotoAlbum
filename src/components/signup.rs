@@ -18,10 +18,10 @@ pub async fn signup(
 ) -> Result<(), ServerFnError> {
     //TODO check if invitation is expired
 
-    use bcrypt::{hash, DEFAULT_COST};
+    use crate::auth::ssr::{auth, SqlUser};
     use crate::db::ssr::*;
-    use crate::auth::ssr::{SqlUser, auth};
     use crate::session::session_expiry::make_session_long_term;
+    use bcrypt::{hash, DEFAULT_COST};
 
     let pool = pool()?;
     let mut auth = auth()?;
@@ -31,45 +31,46 @@ pub async fn signup(
             "Passwords did not match.".to_string(),
         ));
     }
-    
+
     let invited_user = sqlx::query_as::<_, Invite>(
-            "SELECT i.user_id, u.username 
+        "SELECT i.user_id, u.username 
             FROM invites i 
             INNER JOIN users u on u.id = i.user_id 
-            WHERE token = ?"
-        )
-        .bind(&invite)
-        .fetch_one(&pool)
-        .await?;
+            WHERE token = ?",
+    )
+    .bind(&invite)
+    .fetch_one(&pool)
+    .await?;
 
     let password_hashed = hash(password, DEFAULT_COST).unwrap();
 
-    sqlx::query("UPDATE users SET 
+    sqlx::query(
+        "UPDATE users SET 
             email = ?,
             password = ?,
             signed_up = true
-            WHERE id = ?"
-        ).bind(email.clone())
-        .bind(password_hashed)
-        .bind(invited_user.user_id)
-        .execute(&pool)
-        .await?;
-
-    sqlx::query("DELETE FROM invites 
-        WHERE token = ?"
-    ).bind(&invite)
+            WHERE id = ?",
+    )
+    .bind(email.clone())
+    .bind(password_hashed)
+    .bind(invited_user.user_id)
     .execute(&pool)
     .await?;
 
-    let user =
-        SqlUser::get_from_username(invited_user.username, &pool)
-            .await
-            .ok_or_else(|| {
-                ServerFnError::new("Signup failed: User does not exist.")
-            })?;
+    sqlx::query(
+        "DELETE FROM invites 
+        WHERE token = ?",
+    )
+    .bind(&invite)
+    .execute(&pool)
+    .await?;
+
+    let user = SqlUser::get_from_username(invited_user.username, &pool)
+        .await
+        .ok_or_else(|| ServerFnError::new("Signup failed: User does not exist."))?;
 
     auth.login(&user).await?;
-    if remember.is_some(){
+    if remember.is_some() {
         make_session_long_term().await?;
     }
 
@@ -79,9 +80,7 @@ pub async fn signup(
 }
 
 #[component]
-pub fn Signup(
-    action: Action<Signup, Result<(), ServerFnError>>,
-) -> impl IntoView {
+pub fn Signup(action: Action<Signup, Result<(), ServerFnError>>) -> impl IntoView {
     // Get invite from URL
     let params = use_params_map();
     let invite = params.with(|p| p.get("invite").cloned().unwrap_or_default());
@@ -96,9 +95,9 @@ pub fn Signup(
                 name="email"
             />
             <br/>
-            <input 
-                type="password" 
-                placeholder="Password" 
+            <input
+                type="password"
+                placeholder="Password"
                 name="password"
             />
             <br/>

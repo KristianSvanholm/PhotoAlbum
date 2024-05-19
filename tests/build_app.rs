@@ -1,29 +1,26 @@
-
 use axum::{
     body::Body as AxumBody,
     extract::{Path, State},
     http::Request,
+    middleware,
     response::{IntoResponse, Response},
     routing::get,
     Router,
-    middleware,
 };
 use axum_login::{
+    tower_sessions::{Expiry, Session, SessionManagerLayer},
     AuthManagerLayerBuilder,
-    tower_sessions::{Expiry, SessionManagerLayer, Session}
 };
-use tower_sessions_sqlx_store::SqliteStore;
 use leptos::{get_configuration, logging::log, provide_context};
-use leptos_axum::{
-    generate_route_list, handle_server_fns_with_context, LeptosRoutes,
-};
+use leptos_axum::{generate_route_list, handle_server_fns_with_context, LeptosRoutes};
 use photo_album::{
+    app::*,
     auth::ssr::{AuthSession, Backend},
     session::session_expiry::SessionExpiryConfig,
     state::AppState,
-    app::*,
 };
 use sqlx::sqlite::SqlitePoolOptions;
+use tower_sessions_sqlx_store::SqliteStore;
 
 async fn server_fn_handler(
     State(app_state): State<AppState>,
@@ -63,7 +60,7 @@ async fn leptos_routes_handler(
     handler(req).await.into_response()
 }
 
-pub async fn build_app() -> Router{
+pub async fn build_app() -> Router {
     use photo_album::fileserv::file_and_error_handler;
     use photo_album::session::session_expiry::session_expiry_manager;
 
@@ -96,15 +93,21 @@ pub async fn build_app() -> Router{
         )
         .route("/pkg/*path", get(file_and_error_handler))
         .leptos_routes_with_handler(routes, get(leptos_routes_handler))
-        .layer(middleware::from_fn_with_state(app_state.clone(), session_expiry_manager))
+        .layer(middleware::from_fn_with_state(
+            app_state.clone(),
+            session_expiry_manager,
+        ))
         .layer(
-            AuthManagerLayerBuilder::new(Backend::new(pool), 
+            AuthManagerLayerBuilder::new(
+                Backend::new(pool),
                 SessionManagerLayer::new(session_store.clone())
-                .with_secure(false)
-                .with_name("session")
-                //needed so the cookie gets a max-age attribute
-                .with_expiry(Expiry::OnInactivity(expiry_config.expiry))
-            ).build())
+                    .with_secure(false)
+                    .with_name("session")
+                    //needed so the cookie gets a max-age attribute
+                    .with_expiry(Expiry::OnInactivity(expiry_config.expiry)),
+            )
+            .build(),
+        )
         .fallback(file_and_error_handler)
         .with_state(app_state);
 
