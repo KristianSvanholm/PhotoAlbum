@@ -1,18 +1,18 @@
-use leptos::*;
-use leptos::html::Div;
-use leptos_use::{UseInfiniteScrollOptions, use_infinite_scroll_with_options};
-use serde::Serialize;
-use serde::Deserialize;
+#[cfg(feature = "ssr")]
+use crate::auth;
 use crate::components::home_page::Filters;
+use leptos::html::Div;
+use leptos::*;
+use leptos_use::{use_infinite_scroll_with_options, UseInfiniteScrollOptions};
+use serde::Deserialize;
+use serde::Serialize;
 #[cfg(feature = "ssr")]
 use std::fs::File;
 #[cfg(feature = "ssr")]
 use std::io::Read;
-#[cfg(feature = "ssr")]
-use crate::auth;
 
 //Image struct for images from DB
-#[cfg_attr(feature="ssr", derive(sqlx::FromRow))]
+#[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
 pub struct ImageDb {
     id: String,
@@ -21,17 +21,10 @@ pub struct ImageDb {
     created_date: String,
 }
 
-#[cfg_attr(feature="ssr", derive(sqlx::FromRow))]
+#[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
 pub struct PrevImageDb {
     created_date: String,
-}
-
-//Store previous fetched date from previous request to prevent duplicate date titles
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct PreviousDate {
-    month: String,
-    year: String,
 }
 
 //Takes a date string and image struct
@@ -43,41 +36,53 @@ pub enum Element {
 
 //Fetch images from database
 #[server(Feed, "/api")]
-pub async fn fetch_files(db_index: usize, count: usize, tags: Option<(String, Vec<String>)>, people: Option<(String, Vec<i64>)>) -> Result<Vec<Element>, ServerFnError> {
+pub async fn fetch_files(
+    db_index: usize,
+    count: usize,
+    tags: Option<(String, Vec<String>)>,
+    people: Option<(String, Vec<i64>)>,
+) -> Result<Vec<Element>, ServerFnError> {
     use crate::image_filter::image_filter;
     auth::logged_in().await?;
 
     //DB connection
     use crate::app::ssr::*;
-    let pool = pool()?; 
-     
+    let pool = pool()?;
+
     // Return nothing if index above limit
     let total_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM files")
-         .fetch_one(&pool)
-         .await?;
+        .fetch_one(&pool)
+        .await?;
     if db_index as i64 > total_count {
         return Ok(vec![]);
     }
 
     let base_query = "SELECT DISTINCT f.id, f.path, f.uploadDate AS upload_date, f.createdDate AS created_date FROM files f";
-    let (conditions, joins, binds) = image_filter::prepare_filtered_query_with_pagination(tags, people, count, db_index).await;
+    let (conditions, joins, binds) =
+        image_filter::prepare_filtered_query_with_pagination(tags, people, count, db_index).await;
 
-    let query = image_filter::build_filtered_query(base_query.to_string(), conditions, joins, Some("f.createdDate DESC".to_string()), Some(count), Some(db_index));
+    let query = image_filter::build_filtered_query(
+        base_query.to_string(),
+        conditions,
+        joins,
+        Some("f.createdDate DESC".to_string()),
+        Some(count),
+        Some(db_index),
+    );
 
     let mut query = sqlx::query_as(&query);
     for bind in binds {
         query = query.bind(bind);
     }
 
-    let mut files: Vec<ImageDb> = query
-        .fetch_all(&pool)
-        .await?;
+    let mut files: Vec<ImageDb> = query.fetch_all(&pool).await?;
 
-    for img in &mut files{
+    for img in &mut files {
         // Read the image file
         let mut file = File::open(&img.path).expect("Failed to open image file");
         let mut buffer = Vec::new();
-        file.read_to_end(&mut buffer).expect("Failed to read image file");
+        file.read_to_end(&mut buffer)
+            .expect("Failed to read image file");
 
         // Encode the image buffer as base64
         let base64_image = base64::encode(&buffer);
@@ -85,7 +90,6 @@ pub async fn fetch_files(db_index: usize, count: usize, tags: Option<(String, Ve
         // Generate src attribute value with the base64 image
         img.path = base64_image;
     }
-
 
     let mut grouped_images: Vec<Element> = Vec::new();
 
@@ -106,11 +110,10 @@ pub async fn fetch_files(db_index: usize, count: usize, tags: Option<(String, Ve
     let mut current_year = String::new();
 
     //When there is a previous date
-    if prevfile.is_some() {    
+    if prevfile.is_some() {
         //Access previous date requested
         current_month = prevfile.clone().unwrap().created_date[5..7].to_string();
         current_year = prevfile.clone().unwrap().created_date[0..4].to_string();
-        
     }
 
     let mut c: i64 = 0;
@@ -118,9 +121,9 @@ pub async fn fetch_files(db_index: usize, count: usize, tags: Option<(String, Ve
     for image in files {
         let year = image.created_date[0..4].to_string();
         let month = image.created_date[5..7].to_string();
-        if month != current_month || year != current_year{
+        if month != current_month || year != current_year {
             //Add year on change
-            if year != current_year{
+            if year != current_year {
                 grouped_images.push(Element::String(create_rw_signal(year.to_string())));
                 current_year = year.to_string();
             }
@@ -128,7 +131,7 @@ pub async fn fetch_files(db_index: usize, count: usize, tags: Option<(String, Ve
             grouped_images.push(Element::String(create_rw_signal(month.to_string())));
             current_month = month.to_string();
         }
-        c=c+1;
+        c = c + 1;
         grouped_images.push(Element::ImageDb(create_rw_signal(image)));
     }
 
@@ -138,7 +141,13 @@ pub async fn fetch_files(db_index: usize, count: usize, tags: Option<(String, Ve
 //Images per infinite feed requst
 const FETCH_IMAGE_COUNT: usize = 10;
 
-async fn request_wrapper(db_index: usize, count: usize, ready_lock: WriteSignal<bool>, tags: Option<(String, Vec<String>)>, people: Option<(String, Vec<i64>)>) -> Vec<Element> {
+async fn request_wrapper(
+    db_index: usize,
+    count: usize,
+    ready_lock: WriteSignal<bool>,
+    tags: Option<(String, Vec<String>)>,
+    people: Option<(String, Vec<i64>)>,
+) -> Vec<Element> {
     ready_lock(false);
     let result = fetch_files(db_index, count, tags, people).await.unwrap();
 
@@ -151,9 +160,7 @@ async fn request_wrapper(db_index: usize, count: usize, ready_lock: WriteSignal<
 
 //Creates an infinite feed of images
 #[component]
-pub fn InfiniteFeed(
-    filter: ReadSignal<Filters>,
-) -> impl IntoView {
+pub fn InfiniteFeed(filter: ReadSignal<Filters>) -> impl IntoView {
     use crate::components::loading::Loading_Triangle;
 
     let (ready, set_ready) = create_signal(true);
@@ -163,7 +170,7 @@ pub fn InfiniteFeed(
 
     let initImgs: Vec<Element> = vec![];
     let (images, set_images) = create_signal(initImgs);
-    
+
     let _filter_updater = create_resource(
         move || (filter.get()),
         move |_| async move {
@@ -188,8 +195,15 @@ pub fn InfiniteFeed(
             }
             let l_tags = filter.get_untracked().tags.clone();
             let l_people = filter.get_untracked().people.clone();
-            
-            let images = request_wrapper(db_index.get_untracked() as usize, FETCH_IMAGE_COUNT as usize, set_ready, l_tags, l_people).await;
+
+            let images = request_wrapper(
+                db_index.get_untracked() as usize,
+                FETCH_IMAGE_COUNT as usize,
+                set_ready,
+                l_tags,
+                l_people,
+            )
+            .await;
             set_images.update(|imgs| imgs.extend(images));
             set_loading(false);
         },
@@ -207,14 +221,18 @@ pub fn InfiniteFeed(
     let _ = use_infinite_scroll_with_options(
         el,
         move |_| async move {
-            if !ready.get_untracked(){
+            if !ready.get_untracked() {
                 return; // TODO:: Look into disabling the entire thing instead of just returning forever
             }
             set_loading(true);
 
             //Index counter for DB
-            let newIndex = db_index.get_untracked() + FETCH_IMAGE_COUNT; 
-            logging::log!("Requesting {} more images. Index: {}", FETCH_IMAGE_COUNT, db_index.get_untracked()+FETCH_IMAGE_COUNT);
+            let newIndex = db_index.get_untracked() + FETCH_IMAGE_COUNT;
+            logging::log!(
+                "Requesting {} more images. Index: {}",
+                FETCH_IMAGE_COUNT,
+                db_index.get_untracked() + FETCH_IMAGE_COUNT
+            );
             set_db_index.set(newIndex);
         },
         UseInfiniteScrollOptions::default().distance(300.0),

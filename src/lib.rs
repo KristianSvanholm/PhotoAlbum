@@ -3,7 +3,6 @@ pub mod auth;
 pub mod components;
 pub mod db;
 pub mod error_template;
-pub mod facerecog;
 #[cfg(feature = "ssr")]
 pub mod fileserv;
 pub mod image_filter;

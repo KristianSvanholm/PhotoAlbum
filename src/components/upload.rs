@@ -1,8 +1,8 @@
 #[cfg(feature = "ssr")]
 use crate::auth;
-use futures::future; // 0.3.5
-use image::{DynamicImage, GrayImage, ImageFormat, SubImage};
+use futures::future;
 use leptos::{html::Input, *};
+#[cfg(feature = "ssr")]
 use rustface::{Detector, ImageData};
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::*;
@@ -24,6 +24,7 @@ pub struct Bbox {
     h: u32,
 }
 
+#[cfg(feature = "ssr")]
 impl Bbox {
     fn rect(r: &rustface::Rectangle) -> Bbox {
         Bbox {
@@ -63,13 +64,13 @@ pub async fn faces(image_b64: String) -> Result<Vec<Bbox>, ServerFnError> {
     Ok(faces)
 }
 
-fn decode_image(encoded_string: String) -> DynamicImage {
+fn decode_image(encoded_string: String) -> image::DynamicImage {
     let bytes = base64::decode(encoded_string).expect("Failed to decode image");
     image::load_from_memory(&bytes).expect("Failed to load image")
 }
 
 #[cfg(feature = "ssr")]
-fn detect_faces(detector: &mut dyn Detector, gray: &GrayImage) -> Vec<Bbox> {
+fn detect_faces(detector: &mut dyn Detector, gray: &image::GrayImage) -> Vec<Bbox> {
     let (width, height) = gray.dimensions();
     let image = ImageData::new(gray, width, height);
     let faces = detector.detect(&image);
