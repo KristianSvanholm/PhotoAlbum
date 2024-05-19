@@ -2843,6 +2843,7 @@ dependencies = [
  "futures-locks",
  "gloo",
  "http 1.1.0",
+ "icondata",
  "image",
  "imageproc",
  "lazy_static",

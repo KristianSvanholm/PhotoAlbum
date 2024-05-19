@@ -2,6 +2,7 @@ use crate::components::dialog::Dialog;
 use crate::components::feed::InfiniteFeed;
 use crate::components::upload::UploadMedia;
 use leptonic::components::select::Multiselect;
+use leptonic::components::icon::Icon;
 use leptos::html::Select;
 use leptos::*;
 use serde::{Deserialize, Serialize};
@@ -69,8 +70,7 @@ pub fn HomePage() -> impl IntoView {
             on:click=move |_| {
                 logging::log!("Open upload dialog");
                 set_showing_upload(true);
-            }><i class="fas fa-plus"></i>
-        </button>
+            }><Icon icon=icondata::FaPlusSolid/></button>
         <Dialog
             on_close=move || set_showing_upload(false)
             open=showing_upload>

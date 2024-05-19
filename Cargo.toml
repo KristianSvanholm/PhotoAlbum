@@ -45,6 +45,7 @@ rustface = "0.1.7"
 image = "0.25.1"
 imageproc = "0.24.0"
 leptonic = { git="https://github.com/kristiansvanholm/leptonic", features = ["nightly"]}
+icondata = "0.3.1"
 
 [dev-dependencies]
 axum-test = "14.8.0"

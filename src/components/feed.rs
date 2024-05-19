@@ -3,6 +3,7 @@ use crate::auth;
 use crate::components::home_page::Filters;
 use leptos::html::Div;
 use leptos::*;
+use leptonic::components::icon::Icon;
 use leptos_use::{use_infinite_scroll_with_options, UseInfiniteScrollOptions};
 use serde::Deserialize;
 use serde::Serialize;
@@ -212,7 +213,7 @@ pub fn InfiniteFeed(filter: ReadSignal<Filters>) -> impl IntoView {
     let el: NodeRef<Div> = create_node_ref::<Div>();
 
     //Change feed display variables (smooth/date)
-    let (name, set_name) = create_signal("fas fa-th".to_string());
+    let (name, set_name) = create_signal(icondata::BiGridSolid);
     let (feedDisplayClass, set_feedDisplayClass) = create_signal("break date_title".to_string());
     let (imageDisplayClass, set_imageDisplayClass) = create_signal("image".to_string());
     let (num, set_num) = create_signal(0);
@@ -245,17 +246,17 @@ pub fn InfiniteFeed(filter: ReadSignal<Filters>) -> impl IntoView {
                 <div class="feedSettings break">
                     <button id="displayFeed" on:click=move |_| {
                         if num.get() == 0 {
-                            set_name("fas fa-list".to_string());
+                            set_name(icondata::AiBarsOutlined);
                 set_feedDisplayClass("invis".to_string());
                 set_imageDisplayClass("image imageSmooth".to_string());
                             set_num(1);
                         } else {
-                            set_name("fas fa-th".to_string());
+                            set_name(icondata::BiGridSolid);
                 set_feedDisplayClass("break date_title".to_string());
                 set_imageDisplayClass("image".to_string());
                             set_num(0);
                         }
-            }><i class={name}></i></button>
+            }><Icon icon=name/></button>
                 </div>
                 <For each=move || images.get() key=|i| i.clone() let:item>
                 { match item{

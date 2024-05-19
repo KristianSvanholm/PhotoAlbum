@@ -3,9 +3,9 @@
 
 /* Container for navigation bar at the top */
 .topbarNav {
-	margin: -5px;
+	margin: 0px;
     width: 100vw;
-	height: calc(dimensions.$topbar-height - 2*15px);
+	height: 75px;
     background-color: color.$secondary;
     padding: 15px;
     overflow: hidden;

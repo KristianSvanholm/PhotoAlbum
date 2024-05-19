@@ -1,4 +1,5 @@
 use leptos::*;
+use leptonic::components::icon::Icon;
 
 #[component]
 pub fn Dialog<F, W>(
@@ -19,7 +20,7 @@ where
                 <div class="modal-content">
                 <div class="close"
                 on:click = close.clone()>
-                    <i class="fas fa-times-circle"></i>
+                    <Icon icon=icondata::FaCircleXmarkSolid/>
                 </div>
                 {children().into_view()}
                 </div>
