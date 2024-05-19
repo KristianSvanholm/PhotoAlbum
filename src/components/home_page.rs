@@ -15,7 +15,7 @@ pub struct Filters {
 #[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
 #[derive(Debug, Eq, Ord, PartialEq, PartialOrd, Clone, Serialize, Deserialize)]
 pub struct Tag {
-    pub text: String,
+    pub tag_string: String,
 }
 
 #[server(GetTags, "/api")]
@@ -23,7 +23,7 @@ pub async fn get_tags() -> Result<Vec<Tag>, ServerFnError> {
     use crate::db::ssr::pool;
     let pool = pool()?;
 
-    let tags = sqlx::query_as::<_, Tag>("SELECT text FROM tags")
+    let tags = sqlx::query_as::<_, Tag>("SELECT tagString as tag_string FROM tags")
         .fetch_all(&pool)
         .await?;
 
@@ -90,8 +90,8 @@ pub fn HomePage() -> impl IntoView {
         </select>
         <Multiselect class="mselect"
             options = tags
-            search_text_provider=move |o: Tag| o.text
-            render_option=move |o: Tag| o.text
+            search_text_provider=move |o: Tag| o.tag_string
+            render_option=move |o: Tag| o.tag_string
             selected=selected_tags
             set_selected=move |v| selected_tags.set(v)
         ></Multiselect>
@@ -115,7 +115,7 @@ pub fn HomePage() -> impl IntoView {
             on:click=move |_| {
                 let filter = select_ref.get().unwrap().value();
                 let filter_2 = select_ref_2.get().unwrap().value();
-                let i_tags: Vec<String> = selected_tags.get_untracked().into_iter().map(|x: Tag| x.text).collect();
+                let i_tags: Vec<String> = selected_tags.get_untracked().into_iter().map(|x: Tag| x.tag_string).collect();
                 let i_people: Vec<i64> = selected_users.get_untracked().into_iter().map(|x: crate::components::users::UserInfo| x.id).collect();
 
                 let mut valid_tag_filter: Option<(String, Vec<String>)> = Some((filter, i_tags.clone()));
