@@ -256,7 +256,7 @@ pub fn InfiniteFeed(filter: ReadSignal<Filters>) -> impl IntoView {
                 set_imageDisplayClass("image".to_string());
                             set_num(0);
                         }
-            }><Icon icon=name/></button>
+            }><Icon class="icon" icon=name/></button>
                 </div>
                 <For each=move || images.get() key=|i| i.clone() let:item>
                 { match item{

@@ -70,7 +70,7 @@ pub fn HomePage() -> impl IntoView {
             on:click=move |_| {
                 logging::log!("Open upload dialog");
                 set_showing_upload(true);
-            }><Icon icon=icondata::FaPlusSolid/></button>
+            }><Icon class="icon" icon=icondata::FaPlusSolid/></button>
         <Dialog
             on_close=move || set_showing_upload(false)
             open=showing_upload>

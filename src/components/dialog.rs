@@ -20,7 +20,7 @@ where
                 <div class="modal-content">
                 <div class="close"
                 on:click = close.clone()>
-                    <Icon icon=icondata::FaCircleXmarkSolid/>
+                    <Icon class="icon" icon=icondata::FaCircleXmarkSolid/>
                 </div>
                 {children().into_view()}
                 </div>
