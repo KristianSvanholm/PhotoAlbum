@@ -39,7 +39,7 @@ pub mod image_filter {
                         }
                         "NOT" => {
                             conditions.push(format!(
-                                "(t.tagString NOT IN ({}) OR t.tagString IS NULL)",
+                                "f.id NOT IN (SELECT tf.fileID FROM tagFile tf WHERE tf.tagString IN ({}))",
                                 valid_tags.iter().map(|_| "?").collect::<Vec<_>>().join(",")
                             ));
                             binds.extend(valid_tags);
@@ -84,8 +84,7 @@ pub mod image_filter {
                         }
                         "NOT" => {
                             conditions.push(format!(
-                                "(uf.userID NOT IN ({}) OR uf.userID IS NULL)",
-                                valid_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",")
+                                "f.id NOT IN (SELECT uf.fileID FROM userFile uf WHERE uf.userID IN ({}))",                                valid_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",")
                             ));
                             binds.extend(valid_ids.iter().map(|id| id.to_string()));
                         }
