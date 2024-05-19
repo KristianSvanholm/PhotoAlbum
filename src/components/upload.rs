@@ -4,19 +4,16 @@ use futures::future;
 use leptos::{html::Input, *};
 #[cfg(feature = "ssr")]
 use rustface::{Detector, ImageData};
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::*;
 
-#[derive(
-    Debug, Clone, leptos::server_fn::serde::Serialize, leptos::server_fn::serde::Deserialize,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MediaPayload {
     data: Vec<(String, Vec<u8>)>,
 }
 
-#[derive(
-    Debug, Clone, leptos::server_fn::serde::Serialize, leptos::server_fn::serde::Deserialize,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Bbox {
     x: u32,
     y: u32,
@@ -198,6 +195,17 @@ async fn upload_wrapper(
 #[component]
 pub fn UploadMedia() -> impl IntoView {
     use wasm_bindgen::JsCast;
+
+    spawn_local(async move {
+        match crate::components::users::get_user_map().await {
+            Ok(u) => {
+                for (key, val) in u {
+                    logging::log!("{} {}", key, val);
+                }
+            }
+            Err(e) => logging::log!("{}", e),
+        };
+    });
 
     let (media, set_media) = create_signal(Vec::new());
 
