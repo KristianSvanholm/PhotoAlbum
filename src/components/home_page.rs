@@ -131,21 +131,28 @@ pub fn HomePage() -> impl IntoView
     let (del_image_id, set_del_image_id) = create_signal(Some("aaaaa".to_string()));
 
     let delete_action = create_action(
-        move |_| async move {
-            //Send signal to feed for image deletion
-            set_del_image_id(image_id.get());
+        move |_| async move { spawn_local(async move{
             //Initiate deletion
-            del_image.dispatch(image_id.get().unwrap_or_default());
-            //Set to next or previous image after deletion, or close 
-            if !next_image_id.get().is_none() && !next_image_id.get().unwrap().is_none() {
-                set_image_id(next_image_id.get().unwrap());
-            } else if !prev_image_id.get().is_none() && !prev_image_id.get().unwrap().is_none() {
-                set_image_id(prev_image_id.get().unwrap());
-            } else {
-                set_image_id(None);
+            match delete_image(image_id.get_untracked().unwrap_or_default().to_string()).await{
+                Ok(_)=> {                        //Send signal to feed for image deletion
+                    set_del_image_id(image_id.get());
+                    //Initiate deletion
+                    del_image.dispatch(image_id.get().unwrap_or_default());
+                    //Set to next or previous image after deletion, or close 
+                    if !next_image_id.get().is_none() && !next_image_id.get().unwrap().is_none() {
+                        set_image_id(next_image_id.get().unwrap());
+                    } else if !prev_image_id.get().is_none() && !prev_image_id.get().unwrap().is_none() {
+                        set_image_id(prev_image_id.get().unwrap());
+                    } else {
+                        set_image_id(None);
+                    }
+                },
+                Err(_) => {
+                    //Handle error
+                },
             }
-        }
-    );
+        });
+    });
 
     view! {
         <button
