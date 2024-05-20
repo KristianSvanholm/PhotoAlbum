@@ -138,7 +138,7 @@ pub async fn update_image_info(image_id: String, created_date: Option<String>, l
 
 //Display image and it's deatils
 #[component]
-pub fn image_view<W>(image_id: W) -> impl IntoView
+pub fn image_view<W>(image_id: W, push_delete: Action<(), ()>) -> impl IntoView
 where
     W: Fn() -> String + Copy +'static,
 {
@@ -154,6 +154,7 @@ where
 
     let (editing_image_info, set_editing_image_info) = create_signal(false);
 
+    let (delete_prompt, set_delete_prompt) = create_signal(false);
 
    
 
@@ -227,7 +228,27 @@ where
                         <span><i class="fas fa-calendar-day"></i>
                             {move || if !image_info().upload_date.is_empty(){image_info().upload_date}else{empty()}}
                         </span>
-                        
+                        {
+                            move || if !delete_prompt.get() {
+                                 view!{
+                                     <div>
+                                     <button on:click=move |_| {set_delete_prompt(true)}>"Delete image"</button>
+                                     </div>
+                                 }
+                             } else {
+                                 view!{
+                                     <div>
+                                     <button style="background-color: red;" on:click=move |_| {
+                                         set_delete_prompt(false);
+                                         push_delete.dispatch({});
+                                        
+            
+                                    }>"Delete"</button>
+                                     <button style="margin-left: 4px; background-color: gray;" on:click=move |_| {set_delete_prompt(false)}>"Cancel"</button>
+                                     </div>
+                                 }
+                             }
+                         }
                     </div>
                 </div>
             </div>

@@ -129,7 +129,23 @@ pub fn HomePage() -> impl IntoView
 
     let del_image = create_action(|image_id: &String| {delete_image(image_id.to_string())});
     let (del_image_id, set_del_image_id) = create_signal(Some("aaaaa".to_string()));
-    let (delete_prompt, set_delete_prompt) = create_signal(false);
+
+    let delete_action = create_action(
+        move |_| async move {
+            //Send signal to feed for image deletion
+            set_del_image_id(image_id.get());
+            //Initiate deletion
+            del_image.dispatch(image_id.get().unwrap_or_default());
+            //Set to next or previous image after deletion, or close 
+            if !next_image_id.get().is_none() && !next_image_id.get().unwrap().is_none() {
+                set_image_id(next_image_id.get().unwrap());
+            } else if !prev_image_id.get().is_none() && !prev_image_id.get().unwrap().is_none() {
+                set_image_id(prev_image_id.get().unwrap());
+            } else {
+                set_image_id(None);
+            }
+        }
+    );
 
     view! {
         <button
@@ -144,38 +160,8 @@ pub fn HomePage() -> impl IntoView
             open=move || image_id.get().is_some()
             close_on_outside=true
             close_button=false>
-            {
-                move || if !delete_prompt.get() {
-                     view!{
-                         <div>
-                         <button on:click=move |_| {set_delete_prompt(true)}>"Delete image"</button>
-                         </div>
-                     }
-                 } else {
-                     view!{
-                         <div>
-                         <button style="background-color: red;" on:click=move |_| {
-                            //Send signal to feed for image deletion
-                             set_del_image_id(image_id.get());
-                             //Initiate deletion
-                            del_image.dispatch(image_id.get().unwrap_or_default());
-                            set_delete_prompt(false);
-                            //Set to next or previous image after deletion, or close 
-                            if !next_image_id.get().is_none() && !next_image_id.get().unwrap().is_none() {
-                                set_image_id(next_image_id.get().unwrap());
-                            } else if !prev_image_id.get().is_none() && !prev_image_id.get().unwrap().is_none() {
-                                set_image_id(prev_image_id.get().unwrap());
-                            } else {
-                                set_image_id(None);
-                            }
-
-                        }>"Delete"</button>
-                         <button style="margin-left: 4px; background-color: gray;" on:click=move |_| {set_delete_prompt(false)}>"Cancel"</button>
-                         </div>
-                     }
-                 }
-             }
-            <ImageView image_id=move || image_id.get().unwrap_or_default()/>
+            
+            <ImageView image_id=move || image_id.get().unwrap_or_default() push_delete=delete_action/>
             <div class="bottom-buttons">
                 <button on:click=move |_| set_image_id(prev_image_id.get().unwrap())
                     disabled=move||{prev_image_id.get().is_none() || prev_image_id.get().unwrap().is_none()}>
