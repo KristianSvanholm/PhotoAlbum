@@ -162,6 +162,7 @@ pub fn HomePage() -> impl IntoView
             close_button=false>
             
             <ImageView image_id=move || image_id.get().unwrap_or_default() push_delete=delete_action/>
+
             <div class="bottom-buttons">
                 <button on:click=move |_| set_image_id(prev_image_id.get().unwrap())
                     disabled=move||{prev_image_id.get().is_none() || prev_image_id.get().unwrap().is_none()}>
