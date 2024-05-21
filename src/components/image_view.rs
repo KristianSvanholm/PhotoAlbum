@@ -192,38 +192,46 @@ where
                         <span><i class="fas fa-map-marker-alt"></i>
                             {move ||if let Some(location) = image_info().location {location}else{empty()}}
                         </span>
-                        <Show when=move||{
-                            let user = use_context::<User>();
-                            if let Some(user) = user{
-                                return user.username == image_info().uploader ||
-                                    user.has("admin");
-                            }
-                            return false
-                        }>
-                            <button 
-                                on:click=move |_| {set_editing_image_info(true);}
-                                disabled=move ||{image_info().id.is_empty()}>
-                                <i class="fas fa-pen"></i>"Edit"
-                            </button>
-                            {move || if image_info().id.is_empty().not(){
-                                view!{
-                                    <ImageInfoEdit
-                                    image=image_info()
-                                    on_close=move||set_editing_image_info(false)
-                                    open=editing_image_info
-                                    update_image=move |new_image_info|{
-                                        image.update(|mut image|{
-                                            if let Some(Ok(ref mut img))= &mut image{
-                                                img.created_date=new_image_info.created_date.clone();
-                                                img.location=new_image_info.location.clone();
-                                            };
-                                        });
-                                    }/>
+                        {
+                            let disable = move ||{
+                                if image_info().id.is_empty(){
+                                    return true;
                                 }
-                            }else{
-                                ().into_view()
-                            }}
-                        </Show>
+                                let user = use_context::<User>();
+                                if let Some(user) = user{
+                                    return user.username != image_info().uploader &&
+                                        !user.has("admin");
+                                }
+                                return true;
+                            };
+                            view! {
+                                <button 
+                                    on:click=move |_| {set_editing_image_info(true);}
+                                    class:hastooltip=disable
+                                    disabled=disable>
+                                    <span class="tooltiptext">"You can only edit your own images"</span>
+                                    <i class="fas fa-pen"></i>"Edit"
+                                </button>
+                            }
+                        }
+                        {move || if image_info().id.is_empty().not(){
+                            view!{
+                                <ImageInfoEdit
+                                image=image_info()
+                                on_close=move||set_editing_image_info(false)
+                                open=editing_image_info
+                                update_image=move |new_image_info|{
+                                    image.update(|mut image|{
+                                        if let Some(Ok(ref mut img))= &mut image{
+                                            img.created_date=new_image_info.created_date.clone();
+                                            img.location=new_image_info.location.clone();
+                                        };
+                                    });
+                                }/>
+                            }
+                        }else{
+                            ().into_view()
+                        }}
                     </div>
                     <div class="upload-info">
                         <h3>"Uploaded by:"</h3>
@@ -233,16 +241,24 @@ where
                         <span><i class="fas fa-calendar-day"></i>
                             {move || if !image_info().upload_date.is_empty(){image_info().upload_date}else{empty()}}
                         </span>
-                        <Show when=move||{
-                            let user = use_context::<User>();
-                            if let Some(user) = user{
-                                return user.username == image_info().uploader ||
-                                    user.has("admin");
+                        {
+                            let disable = move||{
+                                let user = use_context::<User>();
+                                if let Some(user) = user{
+                                    return user.username != image_info().uploader &&
+                                        !user.has("admin");
+                                }
+                                return true
+                            };
+                            view! {
+                                <button 
+                                    class:hastooltip=disable
+                                    disabled=disable>
+                                    <span class="tooltiptext">"You can only delete your own images"</span>
+                                    "Delete image"
+                                </button>
                             }
-                            return false
-                        }>
-                            <button>"Delete image"</button>
-                        </Show>
+                        }
                     </div>
                 </div>
             </div>
