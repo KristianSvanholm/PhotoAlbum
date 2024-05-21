@@ -35,7 +35,7 @@ impl Bbox {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Person {
     bounds: Option<Bbox>,
     name: String,
@@ -81,7 +81,7 @@ fn detect_faces(detector: &mut dyn Detector, gray: &image::GrayImage) -> Vec<Bbo
 pub async fn upload_media_server(
     filename: String,
     encoded_string: String,
-    names: Vec<String>,
+    people: Vec<Person>,
 ) -> Result<(), ServerFnError> {
     let user = auth::logged_in().await?;
     use crate::db::ssr::pool;
@@ -125,12 +125,12 @@ pub async fn upload_media_server(
     .await?;
 
     // Find userIDs from names
-    for name in names {
-        let user = match auth::ssr::SqlUser::get_from_username(name.clone(), &pool).await {
+    for person in people {
+        let user = match auth::ssr::SqlUser::get_from_username(person.name.clone(), &pool).await {
             Some(u) => u.id,
             None => {
                 let res = sqlx::query("INSERT INTO users (username) VALUES (?)")
-                    .bind(name)
+                    .bind(person.name)
                     .execute(&pool)
                     .await?;
 
@@ -138,12 +138,24 @@ pub async fn upload_media_server(
             }
         };
 
+        let binds: Vec<Option<u32>> = match person.bounds {
+            Some(b) => vec![b.x, b.y, b.w, b.h]
+                .into_iter()
+                .map(|v| Some(v))
+                .collect(),
+            None => vec![None::<u32>; 4],
+        };
+
         // Insert name tags
-        sqlx::query("INSERT INTO userFile (userID, fileID) VALUES (?, ?)")
-            .bind(user)
-            .bind(&uuid)
-            .execute(&pool)
-            .await?;
+        let mut q = sqlx::query(
+            "INSERT INTO userFile (userID, fileID, x, y, width, height) VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .bind(user)
+        .bind(&uuid);
+        for b in binds {
+            q = q.bind(b);
+        }
+        q.execute(&pool).await?;
     }
 
     Ok(())
@@ -160,15 +172,11 @@ async fn upload(
 
     let mut calls = Vec::new();
 
-    for (filename, encoded_string, names) in payload {
+    for (filename, encoded_string, people) in payload {
         calls.push(upload_wrapper(
             filename,
             encoded_string,
-            names
-                .get_untracked()
-                .iter()
-                .map(|nf| nf.name.clone())
-                .collect(),
+            people.get_untracked(),
             set_done,
             done_count,
         ));
@@ -187,7 +195,7 @@ async fn upload(
 async fn upload_wrapper(
     filename: String,
     encoded_string: String,
-    names: Vec<String>,
+    names: Vec<Person>,
     set_done: WriteSignal<usize>,
     done_count: ReadSignal<usize>,
 ) -> Result<(), ServerFnError> {
