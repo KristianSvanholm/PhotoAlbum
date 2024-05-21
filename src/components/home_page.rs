@@ -109,6 +109,7 @@ pub fn HomePage() -> impl IntoView {
             search_text_provider=move |o: crate::components::users::UserInfo| o.username
             render_option=move |o: crate::components::users::UserInfo| o.username
             selected=selected_users
+            add=move |x| logging::log!("{}", x)
             set_selected=move |v| selected_users.set(v)
         ></Multiselect>
         <button

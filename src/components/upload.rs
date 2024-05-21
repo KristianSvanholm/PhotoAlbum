@@ -1,6 +1,8 @@
 #[cfg(feature = "ssr")]
 use crate::auth;
+use crate::components::users::{get_user_map, UserInfo};
 use futures::future;
+use leptonic::components::select::OptionalSelect;
 use leptos::{html::Input, *};
 #[cfg(feature = "ssr")]
 use rustface::{Detector, ImageData};
@@ -253,6 +255,14 @@ pub fn UploadMedia() -> impl IntoView {
         });
     };
 
+    let users = create_rw_signal(vec![]);
+    spawn_local(async move {
+        match get_user_map().await {
+            Ok(u) => users.set(u),
+            Err(e) => logging::log!("{}", e),
+        };
+    });
+
     view! {
         <input id="file_input" _ref=input_ref type="file" multiple="multiple" accept="image/png, image/gif, image/jpeg, image/tiff"
             on:change=on_change
@@ -279,6 +289,8 @@ pub fn UploadMedia() -> impl IntoView {
                             let f = filename.clone();
                             let e = encoded_string.clone();
                             let name_list = names.clone();
+                            let usrs = users.clone();
+                            let mut selected: Vec<UserInfo> = vec![];
                             view! {
                                     <div class="upload">
                                         <div class="horizontal">
@@ -288,6 +300,9 @@ pub fn UploadMedia() -> impl IntoView {
                                                 each=move || name_list.get()
                                                 key=|idx| idx.id
                                                 children=move |idx| {
+
+                                                    let (get_names, set_names) = create_signal(Option::<UserInfo>::None);
+
                                                     view!{
                                                         <img class="profilepicture" src={format!("data:image/png;base64,{}", img_from_bounds(e.clone(), idx.bounds))} />
                                                         <input
@@ -297,6 +312,17 @@ pub fn UploadMedia() -> impl IntoView {
                                                             }
 
                                                             ></input><br/>
+                                                            <OptionalSelect
+                                                                options=users
+                                                                search_text_provider=move |o: UserInfo| o.username
+                                                                render_option=move |o: UserInfo| o.username
+                                                                selected=get_names
+                                                                add=move |x| logging::log!("{}", x)
+                                                                set_selected=move |v| { set_names.set(v); /*selected.push(v);*/}
+                                                                    //let index = usrs.get_untracked().iter().position(|x| *x == v).unwrap();
+                                                                    //usrs.update(|v| v.remove(index));
+                                                                allow_deselect=true
+                                                            />
                                                     }
                                                 }
                                             />

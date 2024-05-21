@@ -29,6 +29,14 @@ button {
 	}
 }
   
+.horizontal {
+    display: flex;
+    flex-direction:row;
+    flex-wrap:nowrap;
+    gap:10px;
+    margin: 5px;
+}
+
 //Custom scrollbar
 *::-webkit-scrollbar {
     width: 1em;
@@ -67,6 +75,7 @@ button {
 	height: 70px;
 	width: 70px;
 	box-shadow: 0 2px 4px color.$strong-shadow;
+    text-align: center;
 }
 
 .icon {
