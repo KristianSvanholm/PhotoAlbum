@@ -397,11 +397,20 @@ fn img_from_bounds(imgb64: String, bounds: Option<Bbox>) -> String {
 }
 
 fn find_padding(x: i32, y: i32, padding: i32) -> i32 {
-    if x - padding >= 0 && y - padding >= 0 {
+    let x1 = x - padding;
+    let y1 = x - padding;
+
+    if x1 >= 0 && y1 >= 0 {
         return padding;
     }
 
-    return find_padding(x, y, padding - 1);
+    // Whichever is the smallest,
+    // "add" that (negative values, so it will subtract)
+    if x1 < y1 {
+        return padding + x1;
+    } else {
+        return padding + y1;
+    }
 }
 
 #[cfg(feature = "ssr")]
