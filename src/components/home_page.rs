@@ -1,12 +1,12 @@
-use leptos::*;
-use crate::components::feed::InfiniteFeed;
-use crate::components::upload::UploadMedia;
-use crate::components::image_view::ImageView;
 use crate::components::dialog::Dialog;
-use crate::auth;
-use std::fs;
+use crate::components::feed::InfiniteFeed;
+use crate::components::image_view::ImageView;
+use crate::components::upload::UploadMedia;
+use leptos::*;
 use serde::Deserialize;
 use serde::Serialize;
+#[cfg(feature = "ssr")]
+use std::fs;
 
 //Image struct for images from DB
 #[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
@@ -16,7 +16,10 @@ pub struct ImageDb {
 }
 
 #[server(NextImageId, "/api")]
-pub async fn next_prev_image_id(prev_id: String, offset: i16) -> Result<Option<String>, ServerFnError> {
+pub async fn next_prev_image_id(
+    prev_id: String,
+    offset: i16,
+) -> Result<Option<String>, ServerFnError> {
     use crate::auth;
     auth::logged_in().await?;
 
@@ -50,13 +53,13 @@ pub async fn next_prev_image_id(prev_id: String, offset: i16) -> Result<Option<S
 //Delete image from database
 #[server(DeleteImage, "/api")]
 pub async fn delete_image(image_id: String) -> Result<(), ServerFnError> {
+    use crate::auth;
     let user = auth::logged_in().await?;
     let admin = auth::authorized("admin").await;
-    
+
     //DB connection
     use crate::db::ssr::pool;
     let pool = pool()?;
-
 
     //Check if user is uploader
     let uploader:bool = sqlx::query_scalar("SELECT uploadedBy=? FROM files WHERE id = ?")
@@ -78,20 +81,16 @@ pub async fn delete_image(image_id: String) -> Result<(), ServerFnError> {
     }
 
     //Fetch image
-    let img = sqlx::query_as::<_, ImageDb>(
-        "SELECT path FROM files WHERE id = ?;",
-    )
-    .bind(image_id.to_string())
-    .fetch_one(&pool)
-    .await?;
+    let img = sqlx::query_as::<_, ImageDb>("SELECT path FROM files WHERE id = ?;")
+        .bind(image_id.to_string())
+        .fetch_one(&pool)
+        .await?;
 
     //Delete from database
-    sqlx::query(
-        "DELETE FROM files WHERE id = ?;",
-    )
-    .bind(image_id.clone())
-    .execute(&pool)
-    .await?;
+    sqlx::query("DELETE FROM files WHERE id = ?;")
+        .bind(image_id.clone())
+        .execute(&pool)
+        .await?;
 
     //Delete from file system
     fs::remove_file(img.path)?;
@@ -100,8 +99,7 @@ pub async fn delete_image(image_id: String) -> Result<(), ServerFnError> {
 }
 
 #[component]
-pub fn HomePage() -> impl IntoView
-{
+pub fn HomePage() -> impl IntoView {
     let (showing_upload, set_showing_upload) = create_signal(false);
     let (image_id, set_image_id) = create_signal(None);
     let next_image_id = create_local_resource(
@@ -127,18 +125,16 @@ pub fn HomePage() -> impl IntoView
         }
     );
 
-    let del_image = create_action(|image_id: &String| {delete_image(image_id.to_string())});
-    let (del_image_id, set_del_image_id) = create_signal(Some("aaaaa".to_string()));
+    let (del_image_from_feed, set_del_image_from_feed) = create_signal(None::<String>);
 
-    let delete_action = create_action(
-        move |_| async move { spawn_local(async move{
+    let delete_image = move |_| {
+        spawn_local(async move {
             //Initiate deletion
-            match delete_image(image_id.get_untracked().unwrap_or_default().to_string()).await{
-                Ok(_)=> {                        //Send signal to feed for image deletion
-                    set_del_image_id(image_id.get());
-                    //Initiate deletion
-                    del_image.dispatch(image_id.get().unwrap_or_default());
-                    //Set to next or previous image after deletion, or close 
+            match delete_image(image_id.get_untracked().unwrap_or_default().to_string()).await {
+                Ok(_) => {
+                    //Send signal to feed for image deletion
+                    set_del_image_from_feed(image_id.get_untracked());
+                    //Set to next or previous image after deletion, or close
                     if !next_image_id.get().is_none() && !next_image_id.get().unwrap().is_none() {
                         set_image_id(next_image_id.get().unwrap());
                     } else if !prev_image_id.get().is_none() && !prev_image_id.get().unwrap().is_none() {
@@ -152,7 +148,7 @@ pub fn HomePage() -> impl IntoView
                 },
             }
         });
-    });
+    };
 
     view! {
         <button
@@ -167,8 +163,10 @@ pub fn HomePage() -> impl IntoView
             open=move || image_id.get().is_some()
             close_on_outside=true
             close_button=false>
-            
-            <ImageView image_id=move || image_id.get().unwrap_or_default() push_delete=delete_action/>
+
+            <ImageView
+                image_id=move || image_id.get().unwrap_or_default()
+                push_delete=delete_image/>
 
             <div class="bottom-buttons">
                 <button on:click=move |_| set_image_id(prev_image_id.get().unwrap())
@@ -188,10 +186,10 @@ pub fn HomePage() -> impl IntoView
             <UploadMedia/>
         </Dialog>
 
-        <InfiniteFeed 
-        on_image_click=move |image_id:String| set_image_id(Some(image_id)) 
-        send_id=del_image_id
+        <InfiniteFeed
+            on_image_click=move |image_id:String| set_image_id(Some(image_id))
+            send_id=del_image_from_feed
         />
-        
+
     }
 }

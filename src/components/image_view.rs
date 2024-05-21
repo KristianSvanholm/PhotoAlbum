@@ -138,7 +138,10 @@ pub async fn update_image_info(image_id: String, created_date: Option<String>, l
 
 //Display image and it's deatils
 #[component]
-pub fn image_view<W>(image_id: W, push_delete: Action<(), ()>) -> impl IntoView
+pub fn image_view<W>(
+    image_id: W, #[prop(into)] 
+    push_delete: Callback<()>
+) -> impl IntoView
 where
     W: Fn() -> String + Copy +'static,
 {
@@ -230,25 +233,23 @@ where
                         </span>
                         {
                             move || if !delete_prompt.get() {
-                                 view!{
-                                     <div>
-                                     <button on:click=move |_| {set_delete_prompt(true)}>"Delete image"</button>
-                                     </div>
-                                 }
-                             } else {
-                                 view!{
-                                     <div>
-                                     <button style="background-color: red;" on:click=move |_| {
-                                         set_delete_prompt(false);
-                                         push_delete.dispatch({});
-                                        
-            
+                                view!{
+                                    <div>
+                                    <button on:click=move |_| {set_delete_prompt(true)}>"Delete image"</button>
+                                    </div>
+                                }
+                            } else {
+                                view!{
+                                    <div>
+                                    <button style="background-color: red;" on:click=move |_| {
+                                        set_delete_prompt(false);
+                                        push_delete({});
                                     }>"Delete"</button>
-                                     <button style="margin-left: 4px; background-color: gray;" on:click=move |_| {set_delete_prompt(false)}>"Cancel"</button>
-                                     </div>
-                                 }
-                             }
-                         }
+                                    <button style="margin-left: 4px; background-color: gray;" on:click=move |_| {set_delete_prompt(false)}>"Cancel"</button>
+                                    </div>
+                                }
+                            }
+                        }
                     </div>
                 </div>
             </div>
