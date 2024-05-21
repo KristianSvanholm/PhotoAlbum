@@ -127,13 +127,20 @@ pub async fn upload_media_server(
     // Find userIDs from names
     for name in names {
         let user = match auth::ssr::SqlUser::get_from_username(name.clone(), &pool).await {
-            Some(u) => u,
-            None => continue,
+            Some(u) => u.id,
+            None => {
+                let res = sqlx::query("INSERT INTO users (username) VALUES (?)")
+                    .bind(name)
+                    .execute(&pool)
+                    .await?;
+
+                res.last_insert_rowid()
+            }
         };
 
         // Insert name tags
         sqlx::query("INSERT INTO userFile (userID, fileID) VALUES (?, ?)")
-            .bind(user.id)
+            .bind(user)
             .bind(&uuid)
             .execute(&pool)
             .await?;
@@ -289,8 +296,6 @@ pub fn UploadMedia() -> impl IntoView {
                             let f = filename.clone();
                             let e = encoded_string.clone();
                             let name_list = names.clone();
-                            let usrs = users.clone();
-                            let mut selected: Vec<UserInfo> = vec![];
                             view! {
                                     <div class="upload">
                                         <div class="horizontal">
@@ -301,28 +306,33 @@ pub fn UploadMedia() -> impl IntoView {
                                                 key=|idx| idx.id
                                                 children=move |idx| {
 
-                                                    let (get_names, set_names) = create_signal(Option::<UserInfo>::None);
+                                                    let (get_name, set_name) = create_signal(Option::<UserInfo>::None);
+                                                    let _ = create_resource(
+                                                        get_name,
+                                                        // every time `count` changes, this will run
+                                                        move |value| async move {
+                                                            let v = match value {
+                                                                Some(v) => v,
+                                                                None => return,
+                                                            };
+
+                                                            name_list.update(|vs| vs[idx.id].name = v.username)
+                                                        },
+                                                    );
 
                                                     view!{
-                                                        <img class="profilepicture" src={format!("data:image/png;base64,{}", img_from_bounds(e.clone(), idx.bounds))} />
-                                                        <input
-                                                            prop:value=idx.name
-                                                            on:input=move|ev| {
-                                                                name_list.update(|v| v[idx.id].name=event_target_value(&ev));
-                                                            }
-
-                                                            ></input><br/>
-                                                            <OptionalSelect
+                                                        <div class="horizontal person-wrapper">
+                                                            <img class="profilepicture" src={format!("data:image/png;base64,{}", img_from_bounds(e.clone(), idx.bounds))} />
+                                                            <OptionalSelect class="person"
                                                                 options=users
                                                                 search_text_provider=move |o: UserInfo| o.username
                                                                 render_option=move |o: UserInfo| o.username
-                                                                selected=get_names
-                                                                add=move |x| logging::log!("{}", x)
-                                                                set_selected=move |v| { set_names.set(v); /*selected.push(v);*/}
-                                                                    //let index = usrs.get_untracked().iter().position(|x| *x == v).unwrap();
-                                                                    //usrs.update(|v| v.remove(index));
+                                                                selected=get_name
+                                                                add=move |v: String| users.update(|ns| ns.push(UserInfo{id:-1, username:v}))
+                                                                set_selected=set_name
                                                                 allow_deselect=true
                                                             />
+                                                        </div>
                                                     }
                                                 }
                                             />
