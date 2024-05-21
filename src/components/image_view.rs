@@ -272,7 +272,7 @@ fn users_in_picture<W>(image_id: W) -> impl IntoView
 where
     W: Fn() -> String + Copy + 'static,
 {
-    let people = create_resource(move || (), |_| async { vec!["Name 1".to_string(), "Name 2".to_string(), "Name 3".to_string(), "Name 4".to_string()]});
+    let people = create_resource(image_id, |_| async { vec!["Name 1".to_string(), "Name 2".to_string(), "Name 3".to_string(), "Name 4".to_string()]});
     let (editing_people, set_editing_people) = create_signal(false);
 
     view! {

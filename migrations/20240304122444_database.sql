@@ -27,9 +27,9 @@ create table IF NOT EXISTS files(
     folderId integer references folders(id) null,
     path text not null,
     location POINT_2D null,
-    uploadedBy INTEGER references users(id) null,
+    uploadedBy INTEGER references users(id) not null,
     uploadDate timestamp not null,
-    createdDate timestamp not null
+    createdDate timestamp null
 );
 
 create table IF NOT EXISTS userFile(
