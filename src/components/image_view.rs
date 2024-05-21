@@ -9,7 +9,8 @@ use std::fs::File;
 use std::io::Read;
 use crate::components::dialog::Dialog;
 use leptos::html::Input;
- use std::ops::Not;
+use std::ops::Not;
+use crate::auth::User;
 
 //Image struct for images from DB
 #[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
@@ -98,14 +99,14 @@ pub async fn update_image_info(image_id: String, created_date: Option<String>, l
     use crate::app::ssr::*;
     let pool = pool()?;
 
-    //only uploader
+    //only uploader or admin
     let uploader:bool = sqlx::query_scalar("SELECT uploadedBy=? FROM files WHERE id = ?")
         .bind(user.id)
         .bind(image_id.clone())
         .fetch_one(&pool)
         .await?;
 
-    if !uploader {
+    if !uploader && !user.has("admin") {
         return Err(ServerFnError::ServerError(
             "You are not authorized, only the uploader can change an image".to_string(),
         ))
@@ -191,29 +192,38 @@ where
                         <span><i class="fas fa-map-marker-alt"></i>
                             {move ||if let Some(location) = image_info().location {location}else{empty()}}
                         </span>
-                        <button 
-                            on:click=move |_| {set_editing_image_info(true);}
-                            disabled=move ||{image_info().id.is_empty()}>
-                            <i class="fas fa-pen"></i>"Edit"
-                        </button>
-                        {move || if image_info().id.is_empty().not(){
-                            view!{
-                                <ImageInfoEdit
-                                image=image_info()
-                                on_close=move||set_editing_image_info(false)
-                                open=editing_image_info
-                                update_image=move |new_image_info|{
-                                    image.update(|mut image|{
-                                        if let Some(Ok(ref mut img))= &mut image{
-                                            img.created_date=new_image_info.created_date.clone();
-                                            img.location=new_image_info.location.clone();
-                                        };
-                                    });
-                                }/>
+                        <Show when=move||{
+                            let user = use_context::<User>();
+                            if let Some(user) = user{
+                                return user.username == image_info().uploader ||
+                                    user.has("admin");
                             }
-                        }else{
-                            ().into_view()
-                        }}
+                            return false
+                        }>
+                            <button 
+                                on:click=move |_| {set_editing_image_info(true);}
+                                disabled=move ||{image_info().id.is_empty()}>
+                                <i class="fas fa-pen"></i>"Edit"
+                            </button>
+                            {move || if image_info().id.is_empty().not(){
+                                view!{
+                                    <ImageInfoEdit
+                                    image=image_info()
+                                    on_close=move||set_editing_image_info(false)
+                                    open=editing_image_info
+                                    update_image=move |new_image_info|{
+                                        image.update(|mut image|{
+                                            if let Some(Ok(ref mut img))= &mut image{
+                                                img.created_date=new_image_info.created_date.clone();
+                                                img.location=new_image_info.location.clone();
+                                            };
+                                        });
+                                    }/>
+                                }
+                            }else{
+                                ().into_view()
+                            }}
+                        </Show>
                     </div>
                     <div class="upload-info">
                         <h3>"Uploaded by:"</h3>
@@ -223,7 +233,16 @@ where
                         <span><i class="fas fa-calendar-day"></i>
                             {move || if !image_info().upload_date.is_empty(){image_info().upload_date}else{empty()}}
                         </span>
-                        <button>"Delete image"</button>
+                        <Show when=move||{
+                            let user = use_context::<User>();
+                            if let Some(user) = user{
+                                return user.username == image_info().uploader ||
+                                    user.has("admin");
+                            }
+                            return false
+                        }>
+                            <button>"Delete image"</button>
+                        </Show>
                     </div>
                 </div>
             </div>
