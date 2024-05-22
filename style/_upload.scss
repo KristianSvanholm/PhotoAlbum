@@ -1,9 +1,15 @@
 //Upload
-.upload-wrapper {
+.upload-wrapper{
+    overflow-y:hidden;
+}
+
+.upload-content {
 	display: flex;
 	flex-direction: row;
 	flex-wrap: wrap;
 	gap: 10px;
+    height:450px;
+    overflow-y:scroll;
 }
 
 .upload {
@@ -31,7 +37,7 @@
 }
 
 .person-wrapper {
-    min-width: 200px;
+    width: 200px;
 }
 
 .profilepicture {
@@ -42,5 +48,7 @@
 
 .people-scroll {
     height:200px;
-    overflow-x: scroll;
+    width: 305px;
+    margin-right:20px;
+    overflow-y: scroll;
 }
