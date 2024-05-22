@@ -262,7 +262,12 @@ where
                             move || if !delete_prompt.get() {
                                 view!{
                                     <div>
-                                    <button on:click=move |_| {set_delete_prompt(true)}>"Delete image"</button>
+                                    <button
+                                        class:hastooltip=disable
+                                        disabled=disable
+                                        on:click=move |_| {set_delete_prompt(true)}>
+                                        <span class="tooltiptext">"You can only delete your own images"</span>
+                                        "Delete image" </button>
                                     </div>
                                 }
                             } else {
@@ -270,10 +275,6 @@ where
                                     <div>
                                     <button 
                                         style="background-color: red;" 
-                                        class:hastooltip=disable
-                                        disabled=disable>
-                                        <span class="tooltiptext">"You can only delete your own images"</span>
-                                        "Delete image"
                                         on:click=move |_| {
                                             set_delete_prompt(false);
                                             push_delete({});
