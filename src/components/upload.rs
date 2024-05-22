@@ -129,6 +129,10 @@ pub async fn upload_media_server(
         let user = match auth::ssr::SqlUser::get_from_username(person.name.clone(), &pool).await {
             Some(u) => u.id,
             None => {
+                if person.name == "".to_string() {
+                    continue; // Skip this person.
+                }
+
                 let res = sqlx::query("INSERT INTO users (username) VALUES (?)")
                     .bind(person.name)
                     .execute(&pool)
@@ -398,7 +402,7 @@ fn img_from_bounds(imgb64: String, bounds: Option<Bbox>) -> String {
 
 fn find_padding(x: i32, y: i32, padding: i32) -> i32 {
     let x1 = x - padding;
-    let y1 = x - padding;
+    let y1 = y - padding;
 
     if x1 >= 0 && y1 >= 0 {
         return padding;
