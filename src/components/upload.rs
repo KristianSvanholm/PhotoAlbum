@@ -283,7 +283,6 @@ pub fn UploadMedia() -> impl IntoView {
     });
 
     view! {
-        <div class="upload-wrapper">
         <input id="file_input" _ref=input_ref type="file" multiple="multiple" accept="image/png, image/gif, image/jpeg, image/tiff"
             on:change=on_change
         />
@@ -375,7 +374,6 @@ pub fn UploadMedia() -> impl IntoView {
                        Vec::new()
                     }
                 }
-        </div>
         </div>
     }
 }
