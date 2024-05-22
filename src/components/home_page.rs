@@ -168,6 +168,8 @@ pub fn HomePage() -> impl IntoView {
                 image_id=move || image_id.get().unwrap_or_default()
                 push_delete=delete_image/>
 
+            
+            //Mobile devices
             <div class="bottom-buttons">
                 <button on:click=move |_| set_image_id(prev_image_id.get().unwrap())
                     disabled=move||{prev_image_id.get().is_none() || prev_image_id.get().unwrap().is_none()}>
@@ -178,6 +180,15 @@ pub fn HomePage() -> impl IntoView {
                     <i class="fas fa-angle-right"></i>
                 </button>
             </div>
+            //PC devies
+            <button class="bottom-buttons-left" on:click=move |_| set_image_id(prev_image_id.get().unwrap())
+                disabled=move||{prev_image_id.get().is_none() || prev_image_id.get().unwrap().is_none()}>
+                <i class="fas fa-angle-left"></i></button>
+            <button class="bottom-buttons-close" on:click=move |_| set_image_id(None)>"X"</button>
+            <button  class="bottom-buttons-right" on:click=move |_| set_image_id(next_image_id.get().unwrap())
+                disabled=move||{next_image_id.get().is_none() || next_image_id.get().unwrap().is_none()}>
+                <i class="fas fa-angle-right"></i>
+            </button>
         </Dialog>
         <Dialog 
             on_close=move || set_showing_upload(false) 

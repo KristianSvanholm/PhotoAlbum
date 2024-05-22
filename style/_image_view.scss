@@ -106,11 +106,63 @@ $breakpoint-tablet: 768px;
     }
 }
 
+@media (max-width: 1024px) {
+    .bottom-buttons{
+        display: flex;
+        justify-content: space-between;
+        padding-top: 10px;
+    }
 
-.bottom-buttons{
-    display: flex;
-    justify-content: space-between;
-    padding-top: 10px;
+    .bottom-buttons-left{
+        display: none;
+    }
+    .bottom-buttons-close{
+        display: none;
+    }
+    .bottom-buttons-right{
+        display: none;
+    }
 }
 
+@media (min-width: 1024px) {
+    .bottom-buttons{
+        display: none;
+    }
+        
+    .bottom-buttons-left{
+        position:absolute;
+        top: 20%;
+        left: 2%;
+        height: 60%;
+        width: 6%;
+        background-color: rgba(0, 0, 0, 0.5);
+
+    }
+
+    .bottom-buttons-left:disabled{
+        display:none;
+    }
+
+    .bottom-buttons-close {
+        position:absolute;
+        font-size: 40px;
+        top: 6%;
+        left: 86%;
+        background-color: rgba(0, 0, 0, 0.5);
+
+    }   
+
+    .bottom-buttons-right{
+        position:absolute;
+        top: 20%;
+        left: 92%;
+        height: 60%;
+        width: 6%;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .bottom-buttons-right:disabled{
+        display: none;
+    }
+}
 
