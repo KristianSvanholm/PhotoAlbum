@@ -312,7 +312,7 @@ pub fn UploadMedia() -> impl IntoView {
                                     <div class="upload">
                                         <div class="horizontal">
                                             <img class="smallimg" src={format!("data:image/png;base64,{}", e)}/>
-                                            <div>
+                                            <div class="people-scroll">
                                             <For
                                                 each=move || name_list.get()
                                                 key=|idx| idx.id
@@ -348,14 +348,9 @@ pub fn UploadMedia() -> impl IntoView {
                                                     }
                                                 }
                                             />
-                                                <button class="controls" on:click=move |_| {
-                                                    name_list.update(|v| v.push(Person{name:"".to_string(), id: v.len(), bounds: None}));
-                                                }>+</button>
-                                                <button class="controls" on:click=move |_| {
-                                                    name_list.update(|v| { v.pop(); });
-                                                }>-</button>
                                             </div>
                                         </div>
+                                        <div class="horizontal">
                                         <button on:click=move |_| {
                                             let mut m = media.get_untracked();
                                             m.retain(|(filename, _, _)| filename != &f);
@@ -364,6 +359,14 @@ pub fn UploadMedia() -> impl IntoView {
                                             set_memory(memory_count() - 1);
 
                                         }>"Remove"</button>
+                                        <button class="controls" on:click=move |_| {
+                                            name_list.update(|v| v.push(Person{name:"".to_string(), id: v.len(), bounds: None}));
+                                            }>+</button>
+                                        <button class="controls" on:click=move |_| {
+                                            name_list.update(|v| { v.pop(); });
+                                        }>-</button>
+
+                                        </div>
                                     </div>
                             }
                         }).collect::<Vec<_>>()
