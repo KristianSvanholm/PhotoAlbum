@@ -165,27 +165,21 @@ pub async fn upload_media_server(
     }
 
     // Find / create tags and attach them to image
-    for tag in tags {
+    for mut tag in tags {
         if tag.tag_string == "".to_string() {
             continue; // Skip this tag
         }
 
-        // Find or create new tag in db.
-        let tag: Tag = match sqlx::query_as::<_, Tag>("SELECT * FROM tags WHERE tagString = ?")
-            .bind(&tag.tag_string)
-            .fetch_one(&pool)
-            .await
-        {
-            Ok(t) => t,
-            Err(_) => {
-                let _ = sqlx::query("INSERT INTO tags (tagString) VALUES (?)")
-                    .bind(&tag.tag_string)
-                    .execute(&pool)
-                    .await;
+        // Spaces not allowed in tags
+        tag.tag_string = str::replace(&tag.tag_string, " ", "-");
 
-                tag
-            }
-        };
+        // Find or create new tag in db. Result is irrelevant, if it failed, the tag already
+        // existed. If it succeeded, continue with new tag anyways.
+        let _ = sqlx::query("INSERT INTO tags (tagString) VALUES (?)")
+            .bind(&tag.tag_string)
+            .bind(&uuid)
+            .execute(&pool)
+            .await;
 
         sqlx::query("INSERT INTO tagFile (tagString, fileID) VALUES (?, ?)")
             .bind(tag.tag_string)
