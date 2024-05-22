@@ -1,8 +1,9 @@
 #[cfg(feature = "ssr")]
 use crate::auth;
+use crate::components::home_page::{get_tags, Tag};
 use crate::components::users::{get_user_map, UserInfo};
 use futures::future;
-use leptonic::components::select::OptionalSelect;
+use leptonic::components::select::{Multiselect, OptionalSelect};
 use leptos::{html::Input, *};
 #[cfg(feature = "ssr")]
 use rustface::{Detector, ImageData};
@@ -82,6 +83,7 @@ pub async fn upload_media_server(
     filename: String,
     encoded_string: String,
     people: Vec<Person>,
+    tags: Vec<Tag>,
 ) -> Result<(), ServerFnError> {
     let user = auth::logged_in().await?;
     use crate::db::ssr::pool;
@@ -124,15 +126,15 @@ pub async fn upload_media_server(
     .execute(&pool)
     .await?;
 
-    // Find userIDs from names
+    // Find / create users and attach them to image.
     for person in people {
+        if person.name == "".to_string() {
+            continue; // Skip this person.
+        }
+
         let user = match auth::ssr::SqlUser::get_from_username(person.name.clone(), &pool).await {
             Some(u) => u.id,
             None => {
-                if person.name == "".to_string() {
-                    continue; // Skip this person.
-                }
-
                 let res = sqlx::query("INSERT INTO users (username) VALUES (?)")
                     .bind(person.name)
                     .execute(&pool)
@@ -162,11 +164,41 @@ pub async fn upload_media_server(
         q.execute(&pool).await?;
     }
 
+    // Find / create tags and attach them to image
+    for tag in tags {
+        if tag.tag_string == "".to_string() {
+            continue; // Skip this tag
+        }
+
+        // Find or create new tag in db.
+        let tag: Tag = match sqlx::query_as::<_, Tag>("SELECT * FROM tags WHERE tagString = ?")
+            .bind(&tag.tag_string)
+            .fetch_one(&pool)
+            .await
+        {
+            Ok(t) => t,
+            Err(_) => {
+                let _ = sqlx::query("INSERT INTO tags (tagString) VALUES (?)")
+                    .bind(&tag.tag_string)
+                    .execute(&pool)
+                    .await;
+
+                tag
+            }
+        };
+
+        sqlx::query("INSERT INTO tagFile (tagString, fileID) VALUES (?, ?)")
+            .bind(tag.tag_string)
+            .bind(&uuid)
+            .execute(&pool)
+            .await?;
+    }
+
     Ok(())
 }
 
 async fn upload(
-    payload: Vec<(String, String, RwSignal<Vec<Person>>)>,
+    payload: Vec<(String, String, RwSignal<Vec<Person>>, RwSignal<Vec<Tag>>)>,
     set_done: WriteSignal<usize>,
     done_count: ReadSignal<usize>,
 ) -> Result<(), ServerFnError> {
@@ -176,11 +208,12 @@ async fn upload(
 
     let mut calls = Vec::new();
 
-    for (filename, encoded_string, people) in payload {
+    for (filename, encoded_string, people, tags) in payload {
         calls.push(upload_wrapper(
             filename,
             encoded_string,
             people.get_untracked(),
+            tags.get_untracked(),
             set_done,
             done_count,
         ));
@@ -200,10 +233,11 @@ async fn upload_wrapper(
     filename: String,
     encoded_string: String,
     names: Vec<Person>,
+    tags: Vec<Tag>,
     set_done: WriteSignal<usize>,
     done_count: ReadSignal<usize>,
 ) -> Result<(), ServerFnError> {
-    return match upload_media_server(filename, encoded_string, names).await {
+    return match upload_media_server(filename, encoded_string, names, tags).await {
         Ok(_) => {
             set_done(done_count.get_untracked() + 1);
             logging::log!("{}", done_count.get_untracked());
@@ -275,9 +309,15 @@ pub fn UploadMedia() -> impl IntoView {
     };
 
     let users = create_rw_signal(vec![]);
+    let tag_options = create_rw_signal(vec![]);
     spawn_local(async move {
         match get_user_map().await {
             Ok(u) => users.set(u),
+            Err(e) => logging::log!("{}", e),
+        };
+
+        match get_tags().await {
+            Ok(t) => tag_options.set(t),
             Err(e) => logging::log!("{}", e),
         };
     });
@@ -304,10 +344,21 @@ pub fn UploadMedia() -> impl IntoView {
                 {
                     move || if !media().is_empty() {
 
-                        media().iter().map(|(filename, encoded_string, names)| {
+                        media().iter().map(|(filename, encoded_string, names, tags)| {
                             let f = filename.clone();
                             let e = encoded_string.clone();
                             let name_list = names.clone();
+                            let tag_list = tags.clone();
+
+                            let (get_tags, set_tags) = create_signal(vec![]);
+                            let _ = create_resource(
+                                get_tags,
+                                // Every time `get_tags` changes, this will run
+                                move |value| async move {
+                                    tag_list.set(value);
+                                },
+                            );
+
                             view! {
                                     <div class="upload">
                                         <div class="horizontal">
@@ -321,7 +372,7 @@ pub fn UploadMedia() -> impl IntoView {
                                                     let (get_name, set_name) = create_signal(Option::<UserInfo>::None);
                                                     let _ = create_resource(
                                                         get_name,
-                                                        // every time `count` changes, this will run
+                                                        // every time `get_name` changes, this will run
                                                         move |value| async move {
                                                             let v = match value {
                                                                 Some(v) => v,
@@ -331,6 +382,7 @@ pub fn UploadMedia() -> impl IntoView {
                                                             name_list.update(|vs| vs[idx.id].name = v.username)
                                                         },
                                                     );
+
 
                                                     view!{
                                                         <div class="horizontal person-wrapper">
@@ -351,22 +403,30 @@ pub fn UploadMedia() -> impl IntoView {
                                             </div>
                                         </div>
                                         <div class="horizontal">
-                                        <button on:click=move |_| {
-                                            let mut m = media.get_untracked();
-                                            m.retain(|(filename, _, _)| filename != &f);
-                                            set_media(m);
+                                            <button on:click=move |_| {
+                                                let mut m = media.get_untracked();
+                                                m.retain(|(filename, _, _, _)| filename != &f);
+                                                set_media(m);
 
-                                            set_memory(memory_count() - 1);
+                                                set_memory(memory_count() - 1);
 
-                                        }>"Remove"</button>
-                                        <button class="controls" on:click=move |_| {
-                                            name_list.update(|v| v.push(Person{name:"".to_string(), id: v.len(), bounds: None}));
-                                            }>+</button>
-                                        <button class="controls" on:click=move |_| {
-                                            name_list.update(|v| { v.pop(); });
-                                        }>-</button>
+                                            }>"Remove"</button>
+                                            <button class="controls" on:click=move |_| {
+                                                name_list.update(|v| v.push(Person{name:"".to_string(), id: v.len(), bounds: None}));
+                                                }>+</button>
+                                            <button class="controls" on:click=move |_| {
+                                                name_list.update(|v| { v.pop(); });
+                                            }>-</button>
 
                                         </div>
+                                            <Multiselect class="mselect"
+                                                options = tag_options
+                                                search_text_provider=move |o: Tag| o.tag_string
+                                                render_option=move |o: Tag| o.tag_string
+                                                selected=get_tags
+                                                add=move |v: String| tag_options.update(|ts| ts.push(Tag{tag_string: v}))
+                                                set_selected=set_tags
+                                            ></Multiselect>
                                     </div>
                             }
                         }).collect::<Vec<_>>()
@@ -434,7 +494,7 @@ async fn convert_file_to_b64(
     file: File,
     set_memory: WriteSignal<usize>,
     memory_count: ReadSignal<usize>,
-) -> (String, String, RwSignal<Vec<Person>>) {
+) -> (String, String, RwSignal<Vec<Person>>, RwSignal<Vec<Tag>>) {
     let gloo_file = gloo::file::File::from(file);
 
     let bytes = gloo::file::futures::read_as_bytes(&gloo_file)
@@ -443,6 +503,7 @@ async fn convert_file_to_b64(
     let encoded_string = base64::encode(&bytes);
     let encoded_string_thread = encoded_string.clone();
     let names: RwSignal<Vec<Person>> = create_rw_signal(Vec::new());
+    let tags: RwSignal<Vec<Tag>> = create_rw_signal(Vec::new());
 
     spawn_local(async move {
         let faces = match faces(encoded_string_thread).await {
@@ -466,14 +527,14 @@ async fn convert_file_to_b64(
         names.set(names_init);
     });
 
-    (gloo_file.name(), encoded_string, names)
+    (gloo_file.name(), encoded_string, names, tags)
 }
 
 async fn convert_files_to_b64(
     files: FileList,
     set_memory: WriteSignal<usize>,
     memory_count: ReadSignal<usize>,
-) -> Vec<(String, String, RwSignal<Vec<Person>>)> {
+) -> Vec<(String, String, RwSignal<Vec<Person>>, RwSignal<Vec<Tag>>)> {
     let mut res = Vec::new();
     for i in 0..files.length() {
         let file = files.get(i).expect_throw("Failed to get file");
