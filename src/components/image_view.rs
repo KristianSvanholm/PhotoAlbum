@@ -9,7 +9,8 @@ use std::fs::File;
 use std::io::Read;
 use crate::components::dialog::Dialog;
 use leptos::html::Input;
- use std::ops::Not;
+use std::ops::Not;
+use crate::auth::User;
 
 //Image struct for images from DB
 #[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
@@ -99,14 +100,14 @@ pub async fn update_image_info(image_id: String, created_date: Option<String>, l
     use crate::app::ssr::*;
     let pool = pool()?;
 
-    //only uploader
+    //only uploader or admin
     let uploader:bool = sqlx::query_scalar("SELECT uploadedBy=? FROM files WHERE id = ?")
         .bind(user.id)
         .bind(image_id.clone())
         .fetch_one(&pool)
         .await?;
 
-    if !uploader {
+    if !uploader && !user.has("admin") {
         return Err(ServerFnError::ServerError(
             "You are not authorized, only the uploader can change an image".to_string(),
         ))
@@ -199,11 +200,28 @@ where
                         <span><i class="fas fa-map-marker-alt"></i>
                             {move ||if let Some(location) = image_info().location {location}else{empty()}}
                         </span>
-                        <button 
-                            on:click=move |_| {set_editing_image_info(true);}
-                            disabled=move ||{image_info().id.is_empty()}>
-                            <i class="fas fa-pen"></i>"Edit"
-                        </button>
+                        {
+                            let disable = move ||{
+                                if image_info().id.is_empty(){
+                                    return true;
+                                }
+                                let user = use_context::<User>();
+                                if let Some(user) = user{
+                                    return user.username != image_info().uploader &&
+                                        !user.has("admin");
+                                }
+                                return true;
+                            };
+                            view! {
+                                <button 
+                                    on:click=move |_| {set_editing_image_info(true);}
+                                    class:hastooltip=disable
+                                    disabled=disable>
+                                    <span class="tooltiptext">"You can only edit your own images"</span>
+                                    <i class="fas fa-pen"></i>"Edit"
+                                </button>
+                            }
+                        }
                         {move || if image_info().id.is_empty().not(){
                             view!{
                                 <ImageInfoEdit
@@ -232,6 +250,15 @@ where
                             {move || if !image_info().upload_date.is_empty(){image_info().upload_date}else{empty()}}
                         </span>
                         {
+                            let disable = move||{
+                                let user = use_context::<User>();
+                                if let Some(user) = user{
+                                    return user.username != image_info().uploader &&
+                                        !user.has("admin");
+                                }
+                                return true
+                            };
+
                             move || if !delete_prompt.get() {
                                 view!{
                                     <div>
@@ -241,10 +268,16 @@ where
                             } else {
                                 view!{
                                     <div>
-                                    <button style="background-color: red;" on:click=move |_| {
-                                        set_delete_prompt(false);
-                                        push_delete({});
-                                    }>"Delete"</button>
+                                    <button 
+                                        style="background-color: red;" 
+                                        class:hastooltip=disable
+                                        disabled=disable>
+                                        <span class="tooltiptext">"You can only delete your own images"</span>
+                                        "Delete image"
+                                        on:click=move |_| {
+                                            set_delete_prompt(false);
+                                            push_delete({});
+                                        }>"Delete"</button>
                                     <button style="margin-left: 4px; background-color: gray;" on:click=move |_| {set_delete_prompt(false)}>"Cancel"</button>
                                     </div>
                                 }
@@ -263,7 +296,7 @@ fn users_in_picture<W>(image_id: W) -> impl IntoView
 where
     W: Fn() -> String + Copy + 'static,
 {
-    let people = create_resource(move || (), |_| async { vec!["Name 1".to_string(), "Name 2".to_string(), "Name 3".to_string(), "Name 4".to_string()]});
+    let people = create_resource(image_id, |_| async { vec!["Name 1".to_string(), "Name 2".to_string(), "Name 3".to_string(), "Name 4".to_string()]});
     let (editing_people, set_editing_people) = create_signal(false);
 
     view! {

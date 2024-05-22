@@ -44,7 +44,13 @@ pub fn App() -> impl IntoView {
                 logout.version().get(),
             )
         },
-        move |_| get_user(),
+        |_| async move {
+            let user = get_user().await;
+            if let Ok(Some(u))=user.clone() {
+                provide_context(u);
+            }
+            user
+        }
     );
 
     let navref: leptos::NodeRef<Nav> = create_node_ref();
