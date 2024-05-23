@@ -1,9 +1,9 @@
 #[cfg(feature = "ssr")]
 use crate::auth;
 use crate::components::home_page::Filters;
+use leptonic::components::icon::Icon;
 use leptos::html::Div;
 use leptos::*;
-use leptonic::components::icon::Icon;
 use leptos_use::{use_infinite_scroll_with_options, UseInfiniteScrollOptions};
 use serde::Deserialize;
 use serde::Serialize;

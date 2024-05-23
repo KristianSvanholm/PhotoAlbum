@@ -1,5 +1,6 @@
+#[cfg(feature = "ssr")]
+use crate::auth;
 use leptos::*;
-
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "ssr")]
 use sqlx::prelude::FromRow;
@@ -11,8 +12,9 @@ pub struct UserInfo {
     pub username: String,
 }
 
-#[server(GetUserMap, "/api")]
-pub async fn get_user_map() -> Result<Vec<UserInfo>, ServerFnError> {
+#[server(GetUserList, "/api")]
+pub async fn get_user_list_sans_admin() -> Result<Vec<UserInfo>, ServerFnError> {
+    auth::logged_in().await?;
     use crate::db::ssr::pool;
 
     let pool = pool()?;

@@ -1,8 +1,10 @@
+#[cfg(feature = "ssr")]
+use crate::auth;
 use crate::components::dialog::Dialog;
 use crate::components::feed::InfiniteFeed;
 use crate::components::upload::UploadMedia;
-use leptonic::components::select::Multiselect;
 use leptonic::components::icon::Icon;
+use leptonic::components::select::Multiselect;
 use leptos::html::Select;
 use leptos::*;
 use serde::{Deserialize, Serialize};
@@ -21,6 +23,7 @@ pub struct Tag {
 
 #[server(GetTags, "/api")]
 pub async fn get_tags() -> Result<Vec<Tag>, ServerFnError> {
+    auth::logged_in().await?;
     use crate::db::ssr::pool;
     let pool = pool()?;
 
@@ -45,7 +48,7 @@ pub fn HomePage() -> impl IntoView {
     let users = create_rw_signal(vec![]);
     let tags = create_rw_signal(vec![]);
     spawn_local(async move {
-        match crate::components::users::get_user_map().await {
+        match crate::components::users::get_user_list_sans_admin().await {
             Ok(m) => users.set(m),
             Err(e) => logging::log!("{}", e),
         };

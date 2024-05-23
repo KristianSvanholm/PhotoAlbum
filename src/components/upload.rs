@@ -1,7 +1,7 @@
 #[cfg(feature = "ssr")]
 use crate::auth;
 use crate::components::home_page::{get_tags, Tag};
-use crate::components::users::{get_user_map, UserInfo};
+use crate::components::users::{get_user_list_sans_admin, UserInfo};
 use futures::future;
 use leptonic::components::select::{Multiselect, OptionalSelect};
 use leptos::{html::Input, *};
@@ -45,6 +45,8 @@ pub struct Person {
 
 #[server(Faces, "/api", "Cbor")]
 pub async fn faces(image_b64: String) -> Result<Vec<Bbox>, ServerFnError> {
+    auth::logged_in().await?;
+
     let mut detector = match rustface::create_detector("model.bin") {
         Ok(detector) => detector,
         Err(_) => {
@@ -305,7 +307,7 @@ pub fn UploadMedia() -> impl IntoView {
     let users = create_rw_signal(vec![]);
     let tag_options = create_rw_signal(vec![]);
     spawn_local(async move {
-        match get_user_map().await {
+        match get_user_list_sans_admin().await {
             Ok(u) => users.set(u),
             Err(e) => logging::log!("{}", e),
         };
