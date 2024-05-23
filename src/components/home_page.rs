@@ -170,7 +170,7 @@ pub fn HomePage() -> impl IntoView {
 
             
             //Mobile devices
-            <div class="bottom-buttons">
+            <div class="mobile_buttons bottom-buttons">
                 <button on:click=move |_| set_image_id(prev_image_id.get().unwrap())
                     disabled=move||{prev_image_id.get().is_none() || prev_image_id.get().unwrap().is_none()}>
                     <i class="fas fa-angle-left"></i></button>
