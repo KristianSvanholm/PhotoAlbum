@@ -140,7 +140,7 @@ pub async fn fetch_files(
 }
 
 //Images per infinite feed requst
-const FETCH_IMAGE_COUNT: usize = 10;
+const FETCH_IMAGE_COUNT: usize = 20;
 
 async fn request_wrapper(
     db_index: usize,
