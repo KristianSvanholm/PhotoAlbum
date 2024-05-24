@@ -30,7 +30,7 @@ $max-content-height: calc($available-height * 0.9 - 2*$padding);
         width: 80%;
         border-radius: 5px;
         box-shadow: 0 2px 4px color.$strong-shadow;
-        max-height:$max-content-height;/*maximum 90% under header*/
+        max-height: calc($available-height * 0.9);/*$max-content-height;*//*maximum 90% under header*/
         overflow-y: auto;
         &.small{
             width: max-content;
@@ -44,13 +44,17 @@ $max-content-height: calc($available-height * 0.9 - 2*$padding);
     .close {
         color: $close-color;
         float: right;
-        font-size: 28px;
+        //font-size: 28px;
         font-weight: bold;
         &:hover,
         &:focus {
             color: $close-focus-color;
             text-decoration: none;
             cursor: pointer;
+        }
+        .icon{
+            height:28px;
+            width: 28px;
         }
     }
 }

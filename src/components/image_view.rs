@@ -242,9 +242,7 @@ where
                             {move ||{if let Some(date) = image_info().created_date {date}else{empty()}}}
                         </span>
                         <span><Icon class="icon" icon=icondata::BiMapSolid/>
-                            {move ||{if let Some(date) = image_info().created_date {date}else{empty()}}}
-                        </span>
-                        <span>                            {move ||if let Some(location) = image_info().location {location}else{empty()}}
+                            {move ||if let Some(location) = image_info().location {location}else{empty()}}
                         </span>
                         {
                             let disable = move ||{
@@ -293,7 +291,6 @@ where
                             {move || if !image_info().uploader.is_empty(){image_info().uploader}else{empty()}}
                         </span>
                         <span><Icon class="icon" icon=icondata::FaCalendarDaysSolid/>
-                            {move || if !image_info().uploader.is_empty(){image_info().uploader}else{empty()}}
                             {move || if !image_info().upload_date.is_empty(){image_info().upload_date}else{empty()}}
                         </span>
                         {
@@ -611,7 +608,7 @@ where
             <form>
                 <h3> Edit the image information: </h3>
                 <br/>
-                <label for="created_date"><Icon class="icon" icon=icondata::FaCameraSolid/></label>
+                <label for="created_date"><Icon class="icon" icon=icondata::FaCameraSolid/>Taken on</label>
                 <input
                     _ref=input_created_date
                     type="date"
