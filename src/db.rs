@@ -1,7 +1,7 @@
 #[cfg(feature = "ssr")]
 pub mod ssr {
-    pub use sqlx::SqlitePool;
     pub use leptos::*;
+    pub use sqlx::SqlitePool;
 
     pub fn pool() -> Result<SqlitePool, ServerFnError> {
         use_context::<SqlitePool>()

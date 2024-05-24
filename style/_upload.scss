@@ -1,9 +1,15 @@
 //Upload
-.upload-wrapper {
+.upload-wrapper{
+    overflow-y:hidden;
+}
+
+.upload-content {
 	display: flex;
 	flex-direction: row;
 	flex-wrap: wrap;
 	gap: 10px;
+    max-height:450px;
+    overflow-y:scroll;
 }
 
 .upload {
@@ -12,7 +18,7 @@
 	gap: 5px;
 }
 
-.upload img {
+.smallimg {
 	width: 200px;
 	height: 200px;
 }
@@ -20,4 +26,29 @@
 .upload button {
 	width: 200px;
 	height: 30px;
+}
+
+.controls {
+    max-width: 50px;
+}
+
+.person {
+    width: 250px;
+}
+
+.person-wrapper {
+    width: 200px;
+}
+
+.profilepicture {
+    border-radius: 100;
+    width: 40px;
+    height: 40px;
+}
+
+.people-scroll {
+    height:200px;
+    width: 305px;
+    margin-right:20px;
+    overflow-y: scroll;
 }

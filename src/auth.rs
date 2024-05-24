@@ -35,11 +35,9 @@ pub mod ssr {
     use axum_login::{AuthUser, AuthnBackend, UserId};
     use sqlx::SqlitePool;
     pub use std::collections::HashSet;
-    pub type AuthSession = axum_login::AuthSession<
-        Backend,
-    >;
-    pub use axum_login::tower_sessions::{Session, SessionManagerLayer, Expiry};
+    pub type AuthSession = axum_login::AuthSession<Backend>;
     pub use async_trait::async_trait;
+    pub use axum_login::tower_sessions::{Expiry, Session, SessionManagerLayer};
     pub use bcrypt::{hash, verify, DEFAULT_COST};
     use serde::Deserialize;
     use tokio::task;
@@ -47,18 +45,17 @@ pub mod ssr {
     use leptos::*;
 
     pub fn auth() -> Result<AuthSession, ServerFnError> {
-        use_context::<AuthSession>().ok_or_else(|| {
-            ServerFnError::ServerError("Auth session missing.".into())
-        })
+        use_context::<AuthSession>()
+            .ok_or_else(|| ServerFnError::ServerError("Auth session missing.".into()))
     }
 
     impl AuthUser for SqlUser {
         type Id = i64;
-    
+
         fn id(&self) -> Self::Id {
             self.id
         }
-    
+
         fn session_auth_hash(&self) -> &[u8] {
             self.password.as_bytes()
         }
@@ -71,7 +68,7 @@ pub mod ssr {
 
     impl Backend {
         pub fn new(pool: SqlitePool) -> Self {
-            Self {pool}
+            Self { pool }
         }
     }
 
@@ -94,7 +91,7 @@ pub mod ssr {
     }
 
     #[async_trait]
-    impl AuthnBackend for Backend{
+    impl AuthnBackend for Backend {
         type User = SqlUser;
         type Credentials = Credentials;
         type Error = AuthError;
@@ -103,33 +100,33 @@ pub mod ssr {
             &self,
             creds: Self::Credentials,
         ) -> Result<Option<Self::User>, Self::Error> {
-            let sql_user: Option<SqlUser> = sqlx::query_as::<_, SqlUser>(
-                "SELECT * FROM users WHERE username = ?",
-            )
-                .bind(creds.username)
-                .fetch_optional(&self.pool)
-                .await?;
+            let sql_user: Option<SqlUser> =
+                sqlx::query_as::<_, SqlUser>("SELECT * FROM users WHERE username = ?")
+                    .bind(creds.username)
+                    .fetch_optional(&self.pool)
+                    .await?;
 
             // Verifying the password is blocking and potentially slow, so we'll do so via
             // `spawn_blocking`.
             task::spawn_blocking(|| {
                 let user = sql_user.unwrap();
-                if verify(creds.password, &user.password)?{
-                    return Ok(Some(user))
-                }else{
-                    return Ok(None)
+                if verify(creds.password, &user.password)? {
+                    return Ok(Some(user));
+                } else {
+                    return Ok(None);
                 }
             })
             .await?
         }
 
-        async fn get_user(&self, user_id: &UserId<Self>) -> Result<Option<Self::User>, Self::Error> {
-            let sql_user = sqlx::query_as::<_, SqlUser>(
-                "SELECT * FROM users WHERE id = ?",
-            )
-            .bind(user_id)
-            .fetch_optional(&self.pool)
-            .await?;
+        async fn get_user(
+            &self,
+            user_id: &UserId<Self>,
+        ) -> Result<Option<Self::User>, Self::Error> {
+            let sql_user = sqlx::query_as::<_, SqlUser>("SELECT * FROM users WHERE id = ?")
+                .bind(user_id)
+                .fetch_optional(&self.pool)
+                .await?;
 
             Ok(sql_user)
         }
@@ -159,43 +156,34 @@ pub mod ssr {
 
     impl SqlUser {
         pub async fn get(id: i64, pool: &SqlitePool) -> Option<Self> {
-            let sqluser = sqlx::query_as::<_, SqlUser>(
-                "SELECT * FROM users WHERE id = ?",
-            )
-            .bind(id)
-            .fetch_one(pool)
-            .await
-            .ok()?;
+            let sqluser = sqlx::query_as::<_, SqlUser>("SELECT * FROM users WHERE id = ?")
+                .bind(id)
+                .fetch_one(pool)
+                .await
+                .ok()?;
 
             Some(sqluser)
         }
 
-        pub async fn get_from_username(
-            name: String,
-            pool: &SqlitePool,
-        ) -> Option<Self> {
-            let sqluser = sqlx::query_as::<_, SqlUser>(
-                "SELECT * FROM users WHERE username = ?",
-            )
-            .bind(name)
-            .fetch_one(pool)
-            .await
-            .ok()?;
+        pub async fn get_from_username(name: String, pool: &SqlitePool) -> Option<Self> {
+            let sqluser = sqlx::query_as::<_, SqlUser>("SELECT * FROM users WHERE username = ?")
+                .bind(name)
+                .fetch_one(pool)
+                .await
+                .ok()?;
 
             Some(sqluser)
         }
 
-        pub fn into_user(
-            self,
-        ) -> User {
+        pub fn into_user(self) -> User {
             User {
                 id: self.id,
                 username: self.username,
                 email: self.email,
                 permissions: if self.admin == true {
                     ["admin".to_string()]
-                    .into_iter()
-                    .collect::<HashSet<String>>()
+                        .into_iter()
+                        .collect::<HashSet<String>>()
                 } else {
                     HashSet::<String>::new()
                 },
@@ -214,23 +202,21 @@ pub async fn get_user() -> Result<Option<User>, ServerFnError> {
 #[cfg(feature = "ssr")]
 pub async fn logged_in() -> Result<User, ServerFnError> {
     let user = get_user().await?;
-    match user{
-        None => {
-            Err(ServerFnError::ServerError(
-                "You are not logged in".to_string(),
-            ))
-        }
-        Some(user)=>Ok(user)
+    match user {
+        None => Err(ServerFnError::ServerError(
+            "You are not logged in".to_string(),
+        )),
+        Some(user) => Ok(user),
     }
 }
 
 #[cfg(feature = "ssr")]
 pub async fn authorized(permission: &str) -> Result<User, ServerFnError> {
     let user = logged_in().await?;
-    if !user.has(permission){
+    if !user.has(permission) {
         return Err(ServerFnError::ServerError(
             "You are not authorized".to_string(),
-        ))
+        ));
     }
     Ok(user)
 }

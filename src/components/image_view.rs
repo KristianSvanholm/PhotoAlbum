@@ -1,5 +1,9 @@
 #[cfg(feature = "ssr")]
 use crate::auth;
+use crate::auth::User;
+use crate::components::dialog::Dialog;
+use leptonic::components::icon::Icon;
+use leptos::html::Input;
 use leptos::*;
 use serde::Deserialize;
 use serde::Serialize;
@@ -7,10 +11,7 @@ use serde::Serialize;
 use std::fs::File;
 #[cfg(feature = "ssr")]
 use std::io::Read;
-use crate::components::dialog::Dialog;
-use leptos::html::Input;
 use std::ops::Not;
-use crate::auth::User;
 
 //Image struct for images from DB
 #[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
@@ -24,9 +25,7 @@ pub struct ImageDb {
     location: Option<String>,
 }
 impl ImageDb {
-    pub fn into_info(
-        self,
-    ) -> ImageInfo {
+    pub fn into_info(self) -> ImageInfo {
         ImageInfo {
             id: self.id,
             upload_date: self.upload_date,
@@ -90,10 +89,13 @@ pub async fn get_image(image_id: String) -> Result<ImageDb, ServerFnError> {
     Ok(img)
 }
 
-
 //Update image info
 #[server(UpdateImageInfo, "/api")]
-pub async fn update_image_info(image_id: String, created_date: Option<String>, location: Option<String>) -> Result<(), ServerFnError> {
+pub async fn update_image_info(
+    image_id: String,
+    created_date: Option<String>,
+    location: Option<String>,
+) -> Result<(), ServerFnError> {
     let user = auth::logged_in().await?;
 
     //DB connection
@@ -101,7 +103,7 @@ pub async fn update_image_info(image_id: String, created_date: Option<String>, l
     let pool = pool()?;
 
     //only uploader or admin
-    let uploader:bool = sqlx::query_scalar("SELECT uploadedBy=? FROM files WHERE id = ?")
+    let uploader: bool = sqlx::query_scalar("SELECT uploadedBy=? FROM files WHERE id = ?")
         .bind(user.id)
         .bind(image_id.clone())
         .fetch_one(&pool)
@@ -110,29 +112,29 @@ pub async fn update_image_info(image_id: String, created_date: Option<String>, l
     if !uploader && !user.has("admin") {
         return Err(ServerFnError::ServerError(
             "You are not authorized, only the uploader can change an image".to_string(),
-        ))
+        ));
     }
 
     //Check if created_date is a valid date
     use regex::Regex;
     if let Some(date) = created_date.clone() {
-        let valid_date = Regex::new(r"^\d{4}-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])$").unwrap().is_match(&date);
-        if !valid_date{
+        let valid_date = Regex::new(r"^\d{4}-(0[1-9]|1[012])-(0[1-9]|[12][0-9]|3[01])$")
+            .unwrap()
+            .is_match(&date);
+        if !valid_date {
             return Err(ServerFnError::ServerError(
                 "The date is corrupted. The date must have the format yyyy-mm-dd".to_string(),
-            ))
+            ));
         }
     }
 
     //Update image
-    sqlx::query(
-        "UPDATE files SET createdDate=?,location=? WHERE id = ?;",
-    )
-    .bind(created_date)
-    .bind(location)
-    .bind(image_id)
-    .execute(&pool)
-    .await?;
+    sqlx::query("UPDATE files SET createdDate=?,location=? WHERE id = ?;")
+        .bind(created_date)
+        .bind(location)
+        .bind(image_id)
+        .execute(&pool)
+        .await?;
 
     Ok(())
 }
@@ -154,15 +156,22 @@ pub async fn get_users_in_image(_image_id: String) -> Result<Vec<String>, Server
     .fetch_all(&pool)
     .await?;*/
 
-    let test = vec!["Name 1".to_string(), "Name 2".to_string(), "Name 3".to_string(), "Name 4".to_string()];
+    let test = vec![
+        "Name 1".to_string(),
+        "Name 2".to_string(),
+        "Name 3".to_string(),
+        "Name 4".to_string(),
+    ];
 
     Ok(test)
 }
 
-
 //Update image info
 #[server(UpdateUseresInImage, "/api")]
-pub async fn update_users_in_image(_image_id: String, users: Vec<String>) -> Result<(), ServerFnError> {
+pub async fn update_users_in_image(
+    _image_id: String,
+    users: Vec<String>,
+) -> Result<(), ServerFnError> {
     auth::logged_in().await?;
 
     //DB connection
@@ -178,28 +187,24 @@ pub async fn update_users_in_image(_image_id: String, users: Vec<String>) -> Res
 
 //Display image and it's deatils
 #[component]
-pub fn image_view<W>(
-    image_id: W, #[prop(into)] 
-    push_delete: Callback<()>
-) -> impl IntoView
+pub fn image_view<W>(image_id: W, #[prop(into)] push_delete: Callback<()>) -> impl IntoView
 where
-    W: Fn() -> String + Copy +'static,
+    W: Fn() -> String + Copy + 'static,
 {
     use crate::components::loading::Loading_Triangle;
     let image = create_resource(image_id, get_image);
-    let image_info = Signal::derive(move||
-        if let Some(Ok(img))=image.get(){
+    let image_info = Signal::derive(move || {
+        if let Some(Ok(img)) = image.get() {
             img.into_info()
-        }else{
+        } else {
             ImageInfo::default()
-        });
+        }
+    });
     let (empty, _set_empty) = create_signal("   --".to_string());
 
     let (editing_image_info, set_editing_image_info) = create_signal(false);
 
     let (delete_prompt, set_delete_prompt) = create_signal(false);
-
-   
 
     view! {
         <Suspense fallback = move|| view!{
@@ -233,11 +238,13 @@ where
                     </div>
                     <div class="upload-info">
                         <h3>"Image info:"</h3>
-                        <span><i class="fas fa-camera"></i>
+                        <span><Icon class="icon" icon=icondata::FaCameraSolid/>
                             {move ||{if let Some(date) = image_info().created_date {date}else{empty()}}}
                         </span>
-                        <span><i class="fas fa-map-marker-alt"></i>
-                            {move ||if let Some(location) = image_info().location {location}else{empty()}}
+                        <span><Icon class="icon" icon=icondata::BiMapSolid/>
+                            {move ||{if let Some(date) = image_info().created_date {date}else{empty()}}}
+                        </span>
+                        <span>                            {move ||if let Some(location) = image_info().location {location}else{empty()}}
                         </span>
                         {
                             let disable = move ||{
@@ -252,12 +259,12 @@ where
                                 return true;
                             };
                             view! {
-                                <button 
+                                <button
                                     on:click=move |_| {set_editing_image_info(true);}
                                     class:hastooltip=disable
                                     disabled=disable>
                                     <span class="tooltiptext">"You can only edit your own images"</span>
-                                    <i class="fas fa-pen"></i>"Edit"
+                                    <Icon class="icon" icon=icondata::FaPenSolid/>
                                 </button>
                             }
                         }
@@ -282,10 +289,11 @@ where
                     </div>
                     <div class="upload-info">
                         <h3>"Uploaded by:"</h3>
-                        <span><i class="fas fa-user-circle"></i>
-                            {move || if !image_info().uploader.is_empty(){image_info().uploader}else{empty()}}    
+                        <span><Icon class="icon" icon=icondata::BiUserCircleSolid/>
+                            {move || if !image_info().uploader.is_empty(){image_info().uploader}else{empty()}}
                         </span>
-                        <span><i class="fas fa-calendar-day"></i>
+                        <span><Icon class="icon" icon=icondata::FaCalendarDaysSolid/>
+                            {move || if !image_info().uploader.is_empty(){image_info().uploader}else{empty()}}
                             {move || if !image_info().upload_date.is_empty(){image_info().upload_date}else{empty()}}
                         </span>
                         {
@@ -312,8 +320,8 @@ where
                             } else {
                                 view!{
                                     <div>
-                                    <button 
-                                        style="background-color: red;" 
+                                    <button
+                                        style="background-color: red;"
                                         on:click=move |_| {
                                             set_delete_prompt(false);
                                             push_delete({});
@@ -336,22 +344,21 @@ fn users_in_picture<W>(image_id: W) -> impl IntoView
 where
     W: Fn() -> String + Copy + 'static,
 {
-    let people = create_resource(image_id, |image_id| async move{
+    let people = create_resource(image_id, |image_id| async move {
         let people_res = get_users_in_image(image_id).await;
-        if let Ok(people_vec)=people_res{
-            let people_map = people_vec.iter()
+        if let Ok(people_vec) = people_res {
+            let people_map = people_vec
+                .iter()
                 .enumerate()
-                .map(|(index, name)|{
-                    (index, name.clone())
-                })
+                .map(|(index, name)| (index, name.clone()))
                 .collect::<Vec<(usize, String)>>();
             people_map
-        }else{
+        } else {
             //handle error
             Vec::new()
         }
     });
-       
+
     let (editing_people, set_editing_people) = create_signal(false);
 
     view! {
@@ -374,11 +381,11 @@ where
                             }
                         }
                     />
-                    <button class="edit_persons" 
+                    <button class="edit_persons"
                         disabled=move ||{image_id().is_empty()}
                         on:click=move |_| {
                             set_editing_people(true);
-                        }><i class="fas fa-pen"></i>
+                        }><Icon class="icon" icon=icondata::FaPenSolid/>
                     </button>
                     {move || if people.get().is_some(){
                         view!{
@@ -403,7 +410,7 @@ where
 //Display edit people dialog
 #[component]
 fn user_in_image_edit<F, W, I>(
-    image_id: String, 
+    image_id: String,
     people: Vec<(usize, String)>,
     on_close: F,
     open: W,
@@ -421,14 +428,14 @@ where
     let (update_error, set_update_error) = create_signal(None::<ServerFnError>);
 
     let on_close_clone = on_close.clone();
-    let on_close_click = move |_|{on_close_clone()};
+    let on_close_click = move |_| on_close_clone();
 
     let on_close_clone = on_close.clone();
     let on_edit_save = move |_| {
         //check for changes
         if !changed() {
             on_close_clone();
-            return
+            return;
         }
         //save changes
         //let image_id = image_clone.id.clone();
@@ -436,30 +443,32 @@ where
         let update_users = update_users.clone();
         let image_id = image_id.clone();
         let on_close = on_close_clone.clone();
-        let send_people = people.get_untracked().iter()
-            .map(|(_,name)|{
-                name.clone()
-            })
+        let send_people = people
+            .get_untracked()
+            .iter()
+            .map(|(_, name)| name.clone())
             .collect();
-        spawn_local(async move{
-            match update_users_in_image(image_id, send_people).await{
-                Ok(_)=> {
+        spawn_local(async move {
+            match update_users_in_image(image_id, send_people).await {
+                Ok(_) => {
                     set_updating_users(false);
                     update_users(people.get_untracked());
-                    on_close();},
+                    on_close();
+                }
                 Err(e) => {
                     set_update_error(Some(e));
-                    set_updating_users(false);},
+                    set_updating_users(false);
+                }
             }
         });
     };
 
     view! {
-        <Dialog 
+        <Dialog
             on_close=on_close
             open=open
             close_on_outside=false
-            close_button=false 
+            close_button=false
             small=true>
             <div>
                 <h3> Edit who is visible in the image: </h3>
@@ -498,14 +507,14 @@ where
                             }
                         }
                         />
-                        <button class="edit_persons" 
+                        <button class="edit_persons"
                             on:click=move |_| {
                                 set_changed(true);
                                 set_people.update(|people|{
                                     people.push((next_person_id, "".to_string()));
                                 });
                                 next_person_id+=1;
-                            }><i class="fas fa-plus"></i>
+                            }><Icon class="icon" icon=icondata::FaPlusSolid/>
                         </button>
                     </div>
                 <Show when=move||{update_error().is_some()}>
@@ -545,53 +554,64 @@ where
     let input_created_date = create_node_ref::<Input>();
 
     let on_close_clone = on_close.clone();
-    let on_close_click = move |_|{on_close_clone()};
+    let on_close_click = move |_| on_close_clone();
 
     let image_clone = image.clone();
     let on_close_clone = on_close.clone();
     let on_edit_save = move |_| {
-        let node_created_date = input_created_date.get().expect("ref should be loaded by now");
+        let node_created_date = input_created_date
+            .get()
+            .expect("ref should be loaded by now");
         let node_loaction = input_location.get().expect("ref should be loaded by now");
-        let location = if node_loaction.value().is_empty() {None} else {Some(node_loaction.value())};
-        let created_date = if node_created_date.value().is_empty() {None} else {Some(node_created_date.value())};
+        let location = if node_loaction.value().is_empty() {
+            None
+        } else {
+            Some(node_loaction.value())
+        };
+        let created_date = if node_created_date.value().is_empty() {
+            None
+        } else {
+            Some(node_created_date.value())
+        };
         //check for changes
-        if image_clone.created_date==created_date &&
-        image_clone.location==location {
+        if image_clone.created_date == created_date && image_clone.location == location {
             on_close_clone();
-            return
+            return;
         }
         //save changes
         set_updating_image_info(true);
         let mut new_img = image_clone.clone();
-        new_img.created_date=created_date.clone();
-        new_img.location=location.clone();
+        new_img.created_date = created_date.clone();
+        new_img.location = location.clone();
         let image_id = image_clone.id.clone();
         let update_image = update_image.clone();
         let on_close = on_close_clone.clone();
-        spawn_local(async move{
-            match update_image_info(image_id.clone(), created_date, location).await{
-                Ok(_)=> {
+        spawn_local(async move {
+            match update_image_info(image_id.clone(), created_date, location).await {
+                Ok(_) => {
                     set_updating_image_info(false);
                     update_image(new_img);
-                    on_close();},
+                    on_close();
+                }
                 Err(e) => {
                     set_update_error(Some(e));
-                    set_updating_image_info(false);},
+                    set_updating_image_info(false);
+                }
             }
         });
     };
 
     view! {
-        <Dialog 
+        <Dialog
             on_close=on_close
             open=open
             close_on_outside=false
-            close_button=false 
+            close_button=false
             small=true>
             <form>
                 <h3> Edit the image information: </h3>
                 <br/>
-                <label for="created_date"><i class="fas fa-camera"></i>Taken on</label>
+                <label for="created_date"><Icon class="icon" icon=icondata::FaCameraSolid/></label>
                 <input
                     _ref=input_created_date
                     type="date"
@@ -599,12 +619,12 @@ where
                     name="created_date"
                 />
                 <br/>
-                <label for="created_date"><i class="fas fa-map-marker-alt"></i>Location</label>
-                <input 
+                <label for="created_date"><Icon class="icon" icon=icondata::BiMapSolid/>Location</label>
+                <input
                     _ref=input_location
-                    type="text" 
+                    type="text"
                     value={if let Some(location) = image.location.clone() {location}else{"".to_string()}}
-                    name="loaction" 
+                    name="loaction"
                 />
                 <br/>
                 <Show when=move||{update_error().is_some()}>

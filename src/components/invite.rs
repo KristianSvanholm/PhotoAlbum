@@ -1,10 +1,10 @@
-use leptos::*;
-use serde::{Deserialize, Serialize};
-use leptos::html::Input;
-#[cfg(feature = "ssr")]
-use sqlx::SqlitePool;
 #[cfg(feature = "ssr")]
 use crate::auth;
+use leptos::html::Input;
+use leptos::*;
+use serde::{Deserialize, Serialize};
+#[cfg(feature = "ssr")]
+use sqlx::SqlitePool;
 
 #[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -22,17 +22,16 @@ pub async fn get_user_list() -> Result<Vec<UserInfo>, ServerFnError> {
 
     use crate::db::ssr::pool;
     let pool = pool()?;
-    let users =sqlx::query_as::<_, UserInfo>(
-            "SELECT id, username, email, signed_up, admin FROM users"
-        ).fetch_all(&pool)
-        .await?;
+    let users =
+        sqlx::query_as::<_, UserInfo>("SELECT id, username, email, signed_up, admin FROM users")
+            .fetch_all(&pool)
+            .await?;
 
     Ok(users)
 }
 
-
 #[server(Invite, "/api")]
-pub async fn invite(id: i64) -> Result<String, ServerFnError> {    
+pub async fn invite(id: i64) -> Result<String, ServerFnError> {
     use crate::auth::ssr::SqlUser;
     use crate::db::ssr::pool;
 
@@ -43,24 +42,25 @@ pub async fn invite(id: i64) -> Result<String, ServerFnError> {
 
     let pool = pool()?;
 
-    // TODO: allow only one link per user at a time. 
+    // TODO: allow only one link per user at a time.
     // This will fail if no such user exists and exit the request.
-    let _user = sqlx::query_as::<_, SqlUser>(
-            "SELECT * FROM users WHERE signed_up=false and id = ?"
-        ).bind(id).fetch_one(&pool).await?;    
+    let _user =
+        sqlx::query_as::<_, SqlUser>("SELECT * FROM users WHERE signed_up=false and id = ?")
+            .bind(id)
+            .fetch_one(&pool)
+            .await?;
 
     let link = create_invitation_link(&id, &admin.id, &pool).await?;
 
-    Ok(link) 
+    Ok(link)
 }
 
 #[cfg(feature = "ssr")]
 pub async fn create_invitation_link(
     user_id: &i64,
     admin_id: &i64,
-    pool:&SqlitePool
-)-> Result<String, ServerFnError>{
-
+    pool: &SqlitePool,
+) -> Result<String, ServerFnError> {
     use uuid::Uuid;
     let invite_token = Uuid::new_v4().to_string();
 
@@ -71,13 +71,13 @@ pub async fn create_invitation_link(
         .execute(pool)
         .await?;
 
-    let link = "/signup/".to_string()+&invite_token;
-    
-    Ok(link) 
+    let link = "/signup/".to_string() + &invite_token;
+
+    Ok(link)
 }
 
-#[server(CreateUser,"/api")]
-pub async fn create_user(username: String) -> Result<(), ServerFnError>{
+#[server(CreateUser, "/api")]
+pub async fn create_user(username: String) -> Result<(), ServerFnError> {
     // admin auth requirement
     let _admin = auth::authorized("admin").await?;
     use crate::db::ssr::pool;
@@ -91,26 +91,28 @@ pub async fn create_user(username: String) -> Result<(), ServerFnError>{
     Ok(())
 }
 
-#[server(MakeUserAdmin,"/api")]
-pub async fn make_user_admin(id: i64) -> Result<(), ServerFnError>{
+#[server(MakeUserAdmin, "/api")]
+pub async fn make_user_admin(id: i64) -> Result<(), ServerFnError> {
     // admin auth requirement
     let _admin = auth::authorized("admin").await?;
 
     use crate::db::ssr::pool;
     let pool = pool()?;
 
-    sqlx::query("UPDATE users SET
+    sqlx::query(
+        "UPDATE users SET
             admin = true
-            WHERE id = ?"
-        ).bind(id)
-        .execute(&pool)
-        .await?;
+            WHERE id = ?",
+    )
+    .bind(id)
+    .execute(&pool)
+    .await?;
 
     Ok(())
 }
 
-#[server(DeleteUser,"/api")]
-pub async fn delete_user(username: String) -> Result<(), ServerFnError>{
+#[server(DeleteUser, "/api")]
+pub async fn delete_user(username: String) -> Result<(), ServerFnError> {
     use crate::db::ssr::pool;
 
     // admin auth requirement
@@ -126,33 +128,35 @@ pub async fn delete_user(username: String) -> Result<(), ServerFnError>{
     Ok(())
 }
 
-
-
 #[component]
 pub fn InvitePanel() -> impl IntoView {
     let users = create_resource(|| (), |_| async { get_user_list().await });
 
     let new_user_input = create_node_ref::<Input>();
-    
-    let create_user = move |_| { spawn_local(async move {
-        let node = new_user_input.get_untracked().expect("create user should be loaded by now.");
-        create_user(node.value()).await.unwrap();
-        users.refetch();
+
+    let create_user = move |_| {
+        spawn_local(async move {
+            let node = new_user_input
+                .get_untracked()
+                .expect("create user should be loaded by now.");
+            create_user(node.value()).await.unwrap();
+            users.refetch();
         })
     };
 
-    let delete_user = move |username: String| { spawn_local(async move {
-        delete_user(username).await.unwrap();
-        users.refetch();
+    let delete_user = move |username: String| {
+        spawn_local(async move {
+            delete_user(username).await.unwrap();
+            users.refetch();
         })
     };
 
-    let make_user_admin = move |id: i64| { spawn_local(async move {
-        make_user_admin(id).await.unwrap();
-        users.refetch();
+    let make_user_admin = move |id: i64| {
+        spawn_local(async move {
+            make_user_admin(id).await.unwrap();
+            users.refetch();
         })
     };
-
 
     view! {
         <Suspense fallback=move || view! {<p>"Loading users"</p>}>
@@ -170,17 +174,17 @@ pub fn InvitePanel() -> impl IntoView {
                                         view! {
                                             <div class="user-item">
                                             <p>{&user.username}</p>
-                                        
+
                                             <div class="buttons">
                                                 <Show when=move || !user.signed_up>
                                                     <button on:click=move |_|{
                                                         spawn_local(async move {
-                                                            let token = invite(user.id).await.unwrap(); 
+                                                            let token = invite(user.id).await.unwrap();
                                                             let origin = window().location().origin().unwrap_or_default();
                                                             let invite_link = origin+&token;
                                                             invite_ref.get_untracked().unwrap().set_value(&invite_link);
                                                         })}> "Invite" </button>
-                                                    <input 
+                                                    <input
                                                         type="text"
                                                         placeholder="Invite link"
                                                         name="invite"
@@ -189,13 +193,13 @@ pub fn InvitePanel() -> impl IntoView {
                                                         _ref=invite_ref
                                                     />
                                                 </Show>
-                                        
+
                                                 <Show when=move || (user.signed_up && !user.admin)>
                                                     <button on:click=move |_|{
                                                         make_user_admin(u.id);
                                                     }> "Make admin" </button>
                                                 </Show>
-                                        
+
                                                 <button on:click=move |_|{
                                                     let username = u.username.clone();
                                                     if username != "admin"{ // Impossible to delete the first admin
@@ -213,7 +217,7 @@ pub fn InvitePanel() -> impl IntoView {
                             </div>
                             <br/>
                             <div>
-                                <input 
+                                <input
                                     type="text"
                                     placeholder="New user's name"
                                     name="username"
@@ -222,8 +226,8 @@ pub fn InvitePanel() -> impl IntoView {
                                 />
                                 <button on:click=create_user>"Create new user"</button>
                             </div>
-                            }               
-                        }) 
+                            }
+                        })
                     })
                 }
             }

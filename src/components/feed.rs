@@ -1,5 +1,7 @@
 #[cfg(feature = "ssr")]
 use crate::auth;
+use crate::components::home_page::Filters;
+use leptonic::components::icon::Icon;
 use leptos::html::Div;
 use leptos::*;
 use leptos_use::{use_infinite_scroll_with_options, UseInfiniteScrollOptions};
@@ -25,13 +27,6 @@ pub struct PrevImageDb {
     uploaded_date: String,
 }
 
-//Store previous fetched date from previous request to prevent duplicate date titles
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct PreviousDate {
-    month: String,
-    year: String,
-}
-
 //Takes a date string and image struct
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
 pub enum Element {
@@ -41,7 +36,13 @@ pub enum Element {
 
 //Fetch images from database
 #[server(Feed, "/api")]
-pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<Element>, ServerFnError> {
+pub async fn fetch_files(
+    db_index: usize,
+    count: usize,
+    tags: Option<(String, Vec<String>)>,
+    people: Option<(String, Vec<i64>)>,
+) -> Result<Vec<Element>, ServerFnError> {
+    use crate::image_filter::image_filter;
     auth::logged_in().await?;
 
     //DB connection
@@ -56,15 +57,25 @@ pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<Element>, 
         return Ok(vec![]);
     }
 
-    //Fetch images in descending order
-    let mut files = sqlx::query_as::<_, ImageDb>(
-        "SELECT id, path, uploadDate AS upload_date FROM files ORDER BY uploadDate DESC LIMIT ? OFFSET ?;",
-    )
-    .bind(count.to_string())
-    .bind(db_index.to_string())
-    .fetch_all(&pool)
-    .await?;
+    let base_query = "SELECT DISTINCT f.id, f.path, f.uploadDate AS upload_date FROM files f";
+    let (conditions, joins, binds) =
+        image_filter::prepare_filtered_query_with_pagination(tags, people, count, db_index).await;
 
+    let query = image_filter::build_filtered_query(
+        base_query.to_string(),
+        conditions,
+        joins,
+        Some("f.uploadDate DESC".to_string()),
+        Some(count),
+        Some(db_index),
+    );
+
+    let mut query = sqlx::query_as(&query);
+    for bind in binds {
+        query = query.bind(bind);
+    }
+
+    let mut files: Vec<ImageDb> = query.fetch_all(&pool).await?;
     for img in &mut files {
         // Read the image file
         let mut file = File::open(&img.path).expect("Failed to open image file");
@@ -127,17 +138,19 @@ pub async fn fetch_files(db_index: usize, count: usize) -> Result<Vec<Element>, 
 }
 
 //Images per infinite feed requst
-const FETCH_IMAGE_COUNT: usize = 10;
+const FETCH_IMAGE_COUNT: usize = 20;
 
 async fn request_wrapper(
     db_index: usize,
     count: usize,
     ready_lock: WriteSignal<bool>,
+    tags: Option<(String, Vec<String>)>,
+    people: Option<(String, Vec<i64>)>,
 ) -> Vec<Element> {
     ready_lock(false);
-    let result = fetch_files(db_index, count).await.unwrap();
+    let result = fetch_files(db_index, count, tags, people).await.unwrap();
 
-    if result.len() != 0 {
+    if !result.is_empty() {
         ready_lock(true);
     }
 
@@ -146,7 +159,11 @@ async fn request_wrapper(
 
 //Creates an infinite feed of images
 #[component]
-pub fn infinite_feed<F>(on_image_click: F, send_id: ReadSignal<Option<String>>) -> impl IntoView
+pub fn infinite_feed<F>(
+    on_image_click: F,
+    send_id: ReadSignal<Option<String>>,
+    filter: ReadSignal<Filters>,
+) -> impl IntoView
 where
     F: Fn(String) + 'static + Clone + Copy,
 {
@@ -164,8 +181,37 @@ where
     let _imageUpdater = create_resource(
         move || db_index.get(),
         move |_| async move {
-            let images =
-                request_wrapper(db_index.get_untracked(), FETCH_IMAGE_COUNT, set_ready).await;
+            if db_index.get_untracked() == 0 {
+                return;
+            }
+
+            let l_tags = filter.get_untracked().tags.clone();
+            let l_people = filter.get_untracked().people.clone();
+
+            let images = request_wrapper(
+                db_index.get_untracked(),
+                FETCH_IMAGE_COUNT,
+                set_ready,
+                l_tags,
+                l_people,
+            )
+            .await;
+
+            set_images.update(|imgs| imgs.extend(images));
+            set_loading(false);
+        },
+    );
+
+    let _filter_updater = create_resource(
+        move || (filter.get()),
+        move |_| async move {
+            set_images.set(vec![]);
+            set_db_index.set(0);
+
+            let l_tags = filter.get_untracked().tags.clone();
+            let l_people = filter.get_untracked().people.clone();
+
+            let images = request_wrapper(0, FETCH_IMAGE_COUNT, set_ready, l_tags, l_people).await;
             set_images.update(|imgs| imgs.extend(images));
             set_loading(false);
         },
@@ -173,17 +219,46 @@ where
 
     //Runs through the vector and removes the deleted image
     let _run_delete = create_resource(
-        move || send_id.get(), 
-        move |_id| async move {set_images.update(|imgs| {imgs.retain(|image| match image {
-            Element::ImageDb(img) => img.get_untracked().id != send_id.get_untracked().unwrap_or_default(),
-            Element::String(_) => true,
-        })})});
+        move || send_id.get(),
+        move |_id| async move {
+            set_images.update(|imgs| {
+                imgs.retain(|image| match image {
+                    Element::ImageDb(img) => {
+                        img.get_untracked().id != send_id.get_untracked().unwrap_or_default()
+                    }
+                    Element::String(_) => true,
+                })
+            })
+        },
+    );
 
+    // Signal with resource called every time the bottom is reached in infinite feed
+    let _image_updater = create_resource(
+        move || (db_index.get()),
+        move |_| async move {
+            if db_index.get_untracked() == 0 {
+                return;
+            }
+            let l_tags = filter.get_untracked().tags.clone();
+            let l_people = filter.get_untracked().people.clone();
 
-    let el = create_node_ref::<Div>();
+            let images = request_wrapper(
+                db_index.get_untracked() as usize,
+                FETCH_IMAGE_COUNT as usize,
+                set_ready,
+                l_tags,
+                l_people,
+            )
+            .await;
+            set_images.update(|imgs| imgs.extend(images));
+            set_loading(false);
+        },
+    );
+
+    let el: NodeRef<Div> = create_node_ref::<Div>();
 
     //Change feed display variables (smooth/date)
-    let (name, set_name) = create_signal("fas fa-th".to_string());
+    let (name, set_name) = create_signal(icondata::BiGridSolid);
     let (feedDisplayClass, set_feedDisplayClass) = create_signal("break date_title".to_string());
     let (imageDisplayClass, set_imageDisplayClass) = create_signal("image".to_string());
     let (num, set_num) = create_signal(0);
@@ -211,27 +286,27 @@ where
 
     view! {
         <div class="feedContainer">
-        <div class="flowdiv" node_ref=el>
-        //Change display of feed
-        <div class="feedSettings break">
-        <button id="displayFeed" on:click=move |_| {
-            if num.get() == 0 {
-                set_name("fas fa-list".to_string());
+            <div class="flowdiv" node_ref=el>
+                //Change display of feed
+                <div class="feedSettings break">
+                    <button id="displayFeed" on:click=move |_| {
+                        if num.get() == 0 {
+                            set_name(icondata::AiBarsOutlined);
                 set_feedDisplayClass("invis".to_string());
                 set_imageDisplayClass("image imageSmooth".to_string());
-                set_num(1);
-            } else {
-                set_name("fas fa-th".to_string());
+                            set_num(1);
+                        } else {
+                            set_name(icondata::BiGridSolid);
                 set_feedDisplayClass("break date_title".to_string());
                 set_imageDisplayClass("image".to_string());
-                set_num(0);
-            }
-            }><i class={name}></i></button>
-        </div>
-            <For each=move || images.get() key=|i| i.clone() let:item>
+                            set_num(0);
+                        }
+            }><Icon class="icon" icon=name/></button>
+                </div>
+                <For each=move || images.get() key=|i| i.clone() let:item>
                 { match item{
                     //Image
-                    Element::ImageDb(ref img) => {
+                        Element::ImageDb(ref img) => {
                         view!{
                             <div class={move || imageDisplayClass.get()}>
                             {
@@ -245,33 +320,33 @@ where
                             </div>
                     }},
                     //Date
-                Element::String(ref date) => {
+                        Element::String(ref date) => {
                     let date_clone = date.clone(); //Allow str to reach all the way in
                     view!{
                     <div class={move || feedDisplayClass.get()}>{
-                        match date_clone.get().parse().unwrap() {
-                            1 => "January".to_string(),
-                            2 => "February".to_string(),
-                            3 => "March".to_string(),
-                            4 => "April".to_string(),
-                            5 => "May".to_string(),
-                            6 => "June".to_string(),
-                            7 => "July".to_string(),
-                            8 => "August".to_string(),
-                            9 => "September".to_string(),
-                            10 => "October".to_string(),
-                            11 => "November".to_string(),
-                            12 => "December".to_string(),
-                            _ => date_clone.get()
-                        }
-                    }</div>
+                                    match date_clone.get().parse().unwrap() {
+                                        1 => "January".to_string(),
+                                        2 => "February".to_string(),
+                                        3 => "March".to_string(),
+                                        4 => "April".to_string(),
+                                        5 => "May".to_string(),
+                                        6 => "June".to_string(),
+                                        7 => "July".to_string(),
+                                        8 => "August".to_string(),
+                                        9 => "September".to_string(),
+                                        10 => "October".to_string(),
+                                        11 => "November".to_string(),
+                                        12 => "December".to_string(),
+                                        _ => date_clone.get()
+                                    }
+                                }</div>
                 }}
-            }}
-            </For>
-            <div class="break center-h">
+                    }}
+                </For>
+                <div class="break center-h">
                 <Loading_Triangle show=loading/>
+                </div>
             </div>
-        </div>
         </div>
     }
 }
