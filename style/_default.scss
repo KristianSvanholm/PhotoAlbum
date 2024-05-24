@@ -2,11 +2,12 @@
 
 body {
 	font-family: sans-serif;
-	margin: 5px;
+	margin: 0px;
 	top:0px;
 	background-color: color.$background-color;
 	color: color.$text-on-background;
 	overflow-x: hidden; //Remove minor left-right scroll 
+	overflow-y: hidden;
 }
 
 //Default button layout
@@ -28,6 +29,14 @@ button {
 	}
 }
   
+.horizontal {
+    display: flex;
+    flex-direction:row;
+    flex-wrap:nowrap;
+    gap:10px;
+    margin: 5px;
+}
+
 //Custom scrollbar
 *::-webkit-scrollbar {
     width: 1em;
@@ -53,7 +62,7 @@ button {
 }
 
 .main {
-	min-height: 100vh;
+	min-height: 98vh;
 	height: fit-content;
 }
 
@@ -65,8 +74,14 @@ button {
 	font-size: 40px; 
 	height: 70px;
 	width: 70px;
-	text-align: center;
 	box-shadow: 0 2px 4px color.$strong-shadow;
+    text-align: center;
+}
+
+.icon {
+	display: flex; 
+	justify-content: center; 
+	align-items: center;
 }
 
 //center conten-horizontally 

@@ -2,28 +2,26 @@ use axum::{
     body::Body as AxumBody,
     extract::{Path, State},
     http::Request,
+    middleware,
     response::{IntoResponse, Response},
     routing::get,
     Router,
-    middleware,
 };
 use axum_login::{
+    tower_sessions::{ExpiredDeletion, Expiry, Session, SessionManagerLayer},
     AuthManagerLayerBuilder,
-    tower_sessions::{ExpiredDeletion, Expiry, SessionManagerLayer, Session}
 };
-use tower_sessions_sqlx_store::SqliteStore;
 use leptos::{get_configuration, logging::log, provide_context};
-use leptos_axum::{
-    generate_route_list, handle_server_fns_with_context, LeptosRoutes,
-};
+use leptos_axum::{generate_route_list, handle_server_fns_with_context, LeptosRoutes};
 use photo_album::{
+    app::*,
     auth::ssr::{AuthSession, Backend},
     session::session_expiry::SessionExpiryConfig,
     state::AppState,
-    app::*,
 };
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use tokio::{signal, task::AbortHandle};
+use tower_sessions_sqlx_store::SqliteStore;
 
 async fn server_fn_handler(
     State(app_state): State<AppState>,
@@ -64,18 +62,17 @@ async fn leptos_routes_handler(
 }
 
 #[cfg(feature = "ssr")]
-async fn add_first_user(
-    username: String,
-    pool: &SqlitePool
-){
-    let users_is_empty:bool = sqlx::query_scalar("SELECT CASE WHEN EXISTS(SELECT 1 FROM users) THEN 0 ELSE 1 END AS IsEmpty;")
-        .fetch_one(pool)
-        .await
-        .expect("Database call failed");
+async fn add_first_user(username: String, pool: &SqlitePool) {
+    let users_is_empty: bool = sqlx::query_scalar(
+        "SELECT CASE WHEN EXISTS(SELECT 1 FROM users) THEN 0 ELSE 1 END AS IsEmpty;",
+    )
+    .fetch_one(pool)
+    .await
+    .expect("Database call failed");
 
-    if !users_is_empty{
+    if !users_is_empty {
         println!("Database is not empty, no addional admins are inserted.");
-        return
+        return;
     }
 
     sqlx::query("INSERT INTO users (username, admin) VALUES (?, 1)")
@@ -94,7 +91,7 @@ async fn add_first_user(
         .expect("Getting invite_link failed");
 
     println!("Admin with username {name} was added", name = username);
-    println!("Sign_up now using the following link: {link}", link = link);        
+    println!("Sign_up now using the following link: {link}", link = link);
 }
 
 #[tokio::main]
@@ -104,9 +101,8 @@ async fn main() {
     use std::fs::File;
     use std::path::Path;
 
-    simple_logger::init_with_level(log::Level::Info)
-        .expect("couldn't initialize logging");
-    
+    simple_logger::init_with_level(log::Level::Info).expect("couldn't initialize logging");
+
     if !Path::new("database.db").exists() {
         let _ = File::create("database.db");
     }
@@ -118,15 +114,16 @@ async fn main() {
 
     // Auth section
     let session_store = SqliteStore::new(pool.clone());
-        session_store.migrate().await.unwrap();
-    let deletion_task = tokio::task::spawn(
-        ExpiredDeletion::continuously_delete_expired(session_store.clone(), tokio::time::Duration::from_secs(12*60*60))
-    );
- 
+    session_store.migrate().await.unwrap();
+    let deletion_task = tokio::task::spawn(ExpiredDeletion::continuously_delete_expired(
+        session_store.clone(),
+        tokio::time::Duration::from_secs(12 * 60 * 60),
+    ));
+
     if let Err(e) = sqlx::migrate!().run(&pool).await {
         eprintln!("{e:?}");
     }
-    
+
     //initalize first admin onfirst run
     add_first_user("admin".to_string(), &pool).await;
 
@@ -152,15 +149,21 @@ async fn main() {
         )
         .route("/pkg/*path", get(file_and_error_handler))
         .leptos_routes_with_handler(routes, get(leptos_routes_handler))
-        .layer(middleware::from_fn_with_state(app_state.clone(), session_expiry_manager))
+        .layer(middleware::from_fn_with_state(
+            app_state.clone(),
+            session_expiry_manager,
+        ))
         .layer(
-            AuthManagerLayerBuilder::new(Backend::new(pool), 
+            AuthManagerLayerBuilder::new(
+                Backend::new(pool),
                 SessionManagerLayer::new(session_store.clone())
-                .with_secure(false)
-                .with_name("session")
-                //needed so the cookie gets a max-age attribute
-                .with_expiry(Expiry::OnInactivity(expiry_config.expiry))
-            ).build())
+                    .with_secure(false)
+                    .with_name("session")
+                    //needed so the cookie gets a max-age attribute
+                    .with_expiry(Expiry::OnInactivity(expiry_config.expiry)),
+            )
+            .build(),
+        )
         .fallback(file_and_error_handler)
         .with_state(app_state);
 
@@ -176,7 +179,6 @@ async fn main() {
 
     deletion_task.await.unwrap().unwrap();
 }
-
 
 async fn shutdown_signal(deletion_task_abort_handle: AbortHandle) {
     let ctrl_c = async {

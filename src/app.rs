@@ -1,13 +1,17 @@
-use leptos::{html::{Nav, ToHtmlElement}, *};
-use leptos_meta::*;
-use leptos_router::*;
-use leptos_use::use_event_listener;
 use crate::components::{
-    login::Login, 
-    logout::Logout, 
+    login::Login,
+    logout::Logout,
     signup::Signup,
     //topbar::TopBar
 };
+use leptonic::{components::root::Root, components::theme::LeptonicTheme};
+use leptos::{
+    html::{Nav, ToHtmlElement},
+    *,
+};
+use leptos_meta::*;
+use leptos_router::*;
+use leptos_use::use_event_listener;
 
 #[cfg(feature = "ssr")]
 pub mod ssr {
@@ -21,9 +25,8 @@ pub mod ssr {
     }
 
     pub fn auth() -> Result<AuthSession, ServerFnError> {
-        use_context::<AuthSession>().ok_or_else(|| {
-            ServerFnError::ServerError("Auth session missing.".into())
-        })
+        use_context::<AuthSession>()
+            .ok_or_else(|| ServerFnError::ServerError("Auth session missing.".into()))
     }
 }
 
@@ -48,13 +51,13 @@ pub fn App() -> impl IntoView {
     );
 
     let navref: leptos::NodeRef<Nav> = create_node_ref();
-    
+
     let _ = use_event_listener(navref, click, move |ev| {
         let target = event_target::<web_sys::HtmlAnchorElement>(&ev).to_leptos_element();
         if Some(target.tag_name()) != Some("A".to_string()) {
             return;
         }
-        let _ = target.class_list().add_1("active");        
+        let _ = target.class_list().add_1("active");
         let nav = navref.get_untracked().unwrap().children();
         for i in 0..nav.length() {
             let link = nav.get_with_index(i).unwrap().to_leptos_element();
@@ -67,6 +70,7 @@ pub fn App() -> impl IntoView {
     provide_meta_context();
 
     view! {
+        <Root default_theme=LeptonicTheme::default()>
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.ico"/>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
         <Stylesheet id="leptos" href="/pkg/photo-album.css"/>
@@ -95,13 +99,13 @@ pub fn App() -> impl IntoView {
                                         view! {
                                             <a href="/" class="active">"Home"</a>
                                             <Show when=move || {c_user.has("admin")}>
-                                                <a href="/admin">"Admin"</a> 
+                                                <a href="/admin">"Admin"</a>
                                             </Show>
                                             <ActionForm action=logout class="topbarNav-right">
                                                 <button type="submit">"Sign Out"</button>
                                                 <span>
                                                 {format!("Logged in as: {}({})", user.username, user.id)}
-                                                </span>  
+                                                </span>
                                             </ActionForm>
                                         }.into_view()
                                     }
@@ -117,7 +121,7 @@ pub fn App() -> impl IntoView {
                     // Route
                     <Route path="/" view=move || {
                         view! {
-                            <Show 
+                            <Show
                                 when=move||match user.get(){
                                     Some(_) => true,
                                     None => false
@@ -129,12 +133,12 @@ pub fn App() -> impl IntoView {
                     }>
                         <Route path="/" view=move || {
                             view! {
-                                <Show 
+                                <Show
                                     when=move || {user.get().map(|user| match user {
                                         Ok(Some(_)) => true,
                                         Ok(None) => false,
                                         Err(_) => false,
-                                    }).unwrap_or(false)} 
+                                    }).unwrap_or(false)}
                                     fallback= move || view! { <Login action=login/> }>
                                     <Outlet/>
                                 </Show>
@@ -143,7 +147,7 @@ pub fn App() -> impl IntoView {
                             <Route path="/" view=HomePage/>
                             <Route path="/admin" view=move || {
                                 view! {
-                                    <Show 
+                                    <Show
                                         when=move || {user.get().map(|user| match user {
                                             Ok(Some(user)) => user.has("admin"),
                                             _ => false,
@@ -156,7 +160,7 @@ pub fn App() -> impl IntoView {
                     </Route>
                     <Route path="/signup" view=move || {
                         view! {
-                            <Show 
+                            <Show
                                 when=move || {user.get().map(|user| match user {
                                     Ok(Some(_)) => false,
                                     Ok(None) => true,
@@ -173,6 +177,7 @@ pub fn App() -> impl IntoView {
                 </Routes>
             </main>
         </Router>
+        </Root>
     }
 }
 

@@ -1,13 +1,14 @@
+pub mod app;
 pub mod auth;
-pub mod session; 
+pub mod components;
+pub mod db;
 pub mod error_template;
 #[cfg(feature = "ssr")]
-pub mod state;
-#[cfg(feature = "ssr")]
 pub mod fileserv;
-pub mod db;
-pub mod app;
-pub mod components;
+pub mod image_filter;
+pub mod session;
+#[cfg(feature = "ssr")]
+pub mod state;
 
 #[cfg(feature = "hydrate")]
 #[wasm_bindgen::prelude::wasm_bindgen]

@@ -1,3 +1,4 @@
+
 CREATE TABLE IF NOT EXISTS users (
   id         INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
   username   TEXT NOT NULL UNIQUE,
@@ -11,31 +12,41 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE TABLE IF NOT EXISTS user_permissions (
-    user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token    TEXT NOT NULL
+    user_id  INTEGER NOT NULL,
+    token    TEXT NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 create table IF NOT EXISTS folders(
     id uuid primary key not null,
-    parentId uuid references folder(id) null,
+    parentId uuid null,
     name text not null,
-    createdDate timestamp not null
+    createdDate timestamp not null,
+    FOREIGN KEY(parentID) REFERENCES folder(id) ON DELETE CASCADE
 );
 
 create table IF NOT EXISTS files(
     id uuid primary key not null,
-    folderId integer references folders(id) null,
+    folderId integer null,
     path text not null,
     location POINT_2D null,
-    uploadedBy INTEGER references users(id) null,
+    uploadedBy INTEGER null,
     uploadDate timestamp not null,
-    createdDate timestamp not null
+    createdDate timestamp not null,
+    FOREIGN KEY(folderId) REFERENCES folders(id),
+    FOREIGN KEY(uploadedBy) REFERENCES users(id)
 );
 
 create table IF NOT EXISTS userFile(
-    userID INTEGER references users(id) not null,
-    fileID uuid references files(id) not null,
-    primary key(userID, fileID)
+    userID INTEGER not null,
+    fileID uuid not null,
+    x INTEGER null,
+    y INTEGER null,
+    width INTEGER null,
+    height INTEGER null,
+    PRIMARY KEY(userID, fileID),
+    FOREIGN KEY(userID) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY(fileID) REFERENCES files(id) ON DELETE CASCADE
 );
 
 create table IF NOT EXISTS tags (
@@ -43,7 +54,9 @@ create table IF NOT EXISTS tags (
 );
 
 create table IF NOT EXISTS tagFile (
-    tagString text references tags(tagString) not null,
-    fileID uuid references files(id) not null,
-    primary key(tagString, fileID)
+    tagString text not null,
+    fileID uuid not null,
+    PRIMARY KEY(tagString, fileID),
+    FOREIGN KEY(fileID) REFERENCES files(id) ON DELETE CASCADE,
+    FOREIGN KEY(tagString) REFERENCES tags(tagString) ON DELETE CASCADE
 );

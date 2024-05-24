@@ -16,7 +16,8 @@ playwright/.cache/
 database.db
 test_database.db
 
-#Album folder
+#folders
+faces/
 album/
 
 .DS_Store
