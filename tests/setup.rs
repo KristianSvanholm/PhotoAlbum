@@ -6,7 +6,7 @@ use std::fs::{remove_file, File};
 pub async fn prepare_database() {
     simple_logger::init_with_level(log::Level::Info).expect("couldn't initialize logging");
 
-    remove_file("test_database.db").unwrap();
+    let _ = remove_file("test_database.db");
     let _ = File::create_new("test_database.db");
 
     let pool = SqlitePoolOptions::new()
