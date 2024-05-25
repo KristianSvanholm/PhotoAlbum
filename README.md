@@ -6,7 +6,7 @@
 
 ## Deployment
 Deployment is done through our deployment script. Simply run the following command, which will take care of the rest.  
-`$ sudo sh deploy.sh`  
+`$ sudo ./deploy.sh`  
 
 ## Accessing the files
 The database along with the actual image files can be accessed in the home directory for the ROOT user of the system. 
