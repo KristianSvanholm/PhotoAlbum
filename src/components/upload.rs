@@ -96,15 +96,16 @@ pub async fn upload_media_server(
 
     let pool = pool()?;
 
-    if !Path::new("./album").exists() {
-        let _ = fs::create_dir_all("./album")?;
+    let album_path = "/app/data/album";
+    if !Path::new(album_path).exists() {
+        let _ = fs::create_dir_all(album_path)?;
     }
 
     use uuid::Uuid;
     let file_ext = extract_ext(filename).expect_throw("Missing file extension");
     let uuid = Uuid::new_v4().to_string();
 
-    let path = format!("./album/{}.{}", uuid, file_ext);
+    let path = format!("{}/{}.{}", album_path, uuid, file_ext);
     let bytes = base64::decode(encoded_string).expect_throw("Failed to decode base64");
 
     fs::write(&path, bytes).expect_throw("Failed to write file");

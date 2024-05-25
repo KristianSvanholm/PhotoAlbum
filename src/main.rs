@@ -91,7 +91,7 @@ async fn add_first_user(username: String, pool: &SqlitePool) {
         .expect("Getting invite_link failed");
 
     println!("Admin with username {name} was added", name = username);
-    println!("Sign_up now using the following link: {link}", link = link);
+    println!("Sign_up now using the following link: http://0.0.0.0:3000{link}", link = link);
 }
 
 #[tokio::main]
@@ -103,12 +103,13 @@ async fn main() {
 
     simple_logger::init_with_level(log::Level::Info).expect("couldn't initialize logging");
 
-    if !Path::new("database.db").exists() {
-        let _ = File::create("database.db");
+    let db_path = "/app/data/database.db";
+    if !Path::new(db_path).exists() {
+        let _ = File::create(db_path);
     }
 
     let pool = SqlitePoolOptions::new()
-        .connect("sqlite:database.db")
+        .connect(format!("sqlite://{}", db_path).as_str())
         .await
         .expect("Could not make pool.");
 
