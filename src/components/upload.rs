@@ -443,7 +443,7 @@ pub fn img_from_bounds(imgb64: String, bounds: Option<Bbox>) -> String {
         None => return imgb64,
     };
 
-    let padding: u32 = find_padding(b.x as i32, b.y as i32, FACE_PADDING) as u32;
+    let padding: u32 = find_padding(b.x as i32, b.y as i32, b.w as i32, b.h as i32, image.width() as i32, image.height() as i32, FACE_PADDING) as u32;
 
     let mut buf: Vec<u8> = Vec::new();
     image

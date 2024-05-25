@@ -544,14 +544,8 @@ where
     });
 
     let mut next_person_id = -1;
-    let orig_people = people;
-    let map_people = |people: Vec<Person>| {
-        people
-            .iter()
-            .map(|person| (person.id.clone(), create_signal(Some(person.name.clone()))))
-            .collect::<Vec<_>>()
-    };
-    let (people, set_people) = create_signal(map_people(orig_people.clone()));
+    let orig_people = people.clone();
+    let (people, set_people) = create_signal(people);
     let (changed, set_changed) = create_signal(false);
     let (updating_users, set_updating_users) = create_signal(false);
     let (update_error, set_update_error) = create_signal(None::<String>);
@@ -570,16 +564,16 @@ where
         //check for duplicate names
         let mut names = HashSet::new();
         set_update_error(None);
-        for (_id, (name, _)) in people.get_untracked().into_iter() {
-            if let Some(name) = name() {
-                if names.contains(&name) {
+        for person in people.get_untracked().into_iter() {
+            if person.name.len()>0 {
+                if names.contains(&person.name) {
                     set_update_error(Some(format!(
                         "Names must be unique, but {} appears at least twice",
-                        name
+                        person.name
                     )));
                     return;
                 }
-                names.insert(name);
+                names.insert(person.name);
             } else {
                 set_update_error(Some(format!(
                     "All names must be set. Remove unneeded fields."
@@ -594,24 +588,13 @@ where
         let on_close = on_close_clone.clone();
         let mut add_people = Vec::new();
         let mut change_people: Vec<(i64, Person)> = Vec::new();
-        for (id, (name, _)) in people.get_untracked().iter() {
-            if *id < 0 {
-                add_people.push(Person {
-                    id: -1,
-                    name: name().unwrap(),
-                    bounds: None,
-                });
+        for person in people.get_untracked().iter() {
+            if person.id < 0 {
+                add_people.push(person.clone());
             } else {
-                let orig = orig_people.iter().find(|p| p.id == *id).unwrap();
-                if name().unwrap() != orig.name {
-                    change_people.push((
-                        *id,
-                        Person {
-                            id: *id,
-                            name: name().unwrap(),
-                            bounds: orig.bounds.clone(),
-                        },
-                    ));
+                let orig = orig_people.iter().find(|p| p.id == person.id).unwrap();
+                if person.name != orig.name { 
+                    change_people.push((person.id.clone(), person.clone()));
                 }
             }
         }
@@ -650,81 +633,112 @@ where
             close_on_outside=false
             close_button=false
             small=true>
-            <div>
-                <h3> Edit who is visible in the image: </h3>
-                <br/>
-                <div class="faces">
-                    <For
-                        each=people
-                        key=|(id, _)| id.clone()
-                        children=move |(index, (name, set_name))| {
-                            view! {
-                                <div class="face">
-                                <img 
-                                    src={format!("data:image/png;base64,{}", img_from_bounds(imgb64.clone(), person.bounds))} 
-                                    alt="Base64 Image" />
-                                src={format!("data:image/png;base64,{}", img_from_bounds(imgb64.clone(), person.bounds))} 
-                                
-                                    <OptionalSelect class="person"
-                                        options=users
-                                        search_text_provider=move |o: String| o
-                                        render_option=move |o: String| o
-                                        selected = name
-                                        add=move |v: String| users.update(|users| {
-                                            set_changed(true);
-                                            users.push(v.clone());
-                                            set_name(Some(v));
-                                        })
-                                        set_selected=move|name|{
-                                            set_changed(true);
-                                            set_name(name);
-                                        }
-                                        allow_deselect=false
-                                    />
-                                    <button on:click=move |_| {
-                                        set_changed(true);
-                                        set_people.update(|people| {
-                                            people.retain(|(ind, (signal,_))| {
-                                                if ind == &index {
-                                                    signal.dispose();
-                                                    if *ind > 0{
-                                                        set_delete_people.update(|delete|{
-                                                            delete.push(*ind);
-                                                        });
-                                                    }
-                                                }
-                                                ind != &index
-                                            })
+            {
+                let imgb64 = imgb64.clone();
+                view!{
+                    <div>
+                        <h3> Edit who is visible in the image: </h3>
+                        <br/>
+                        <div class="faces">
+                            <For
+                                each=people
+                                key=|person| person.id.clone()
+                                children={
+                                    let imgb64 = imgb64.clone();
+                                    move |person| {
+                                    let (name, set_name) = create_signal(
+                                        if person.name.len() == 0 {
+                                            None
+                                        }else{
+                                            Some(person.name.clone())
                                         });
-                                    }>{"Remove"}</button>
-                                </div>
-                            }
-                        }
-                        />
-                        <button class="edit_persons"
-                            on:click=move |_| {
-                                set_changed(true);
-                                set_people.update(move |people|{
-                                    people.push((next_person_id.clone(), create_signal(None)));
-                                });
-                                next_person_id-=1;
-                            }><Icon class="icon" icon=icondata::FaPlusSolid/>
-                        </button>
+                                    let _ = create_resource(
+                                        name,
+                                        // every time `get_name` changes, this will run
+                                        move |value| async move {
+                                            let v = match value {
+                                                Some(v) => v,
+                                                None => return,
+                                            };
+                                            set_people.update(|p| {
+                                                p.iter_mut().find(|p|{
+                                                    p.id == person.id
+                                                }).unwrap().name = v;
+                                            });
+                                        },
+                                    );
+                                    view! {
+                                        <div class="face">
+                                        <img 
+                                            src={format!("data:image/png;base64,{}", img_from_bounds(imgb64.clone(), person.bounds))} 
+                                            alt="Base64 Image" />                                
+                                            <OptionalSelect class="person"
+                                                options=users
+                                                search_text_provider=move |o: String| o
+                                                render_option=move |o: String| o
+                                                selected = name
+                                                add=move |v: String| users.update(|users| {
+                                                    set_changed(true);
+                                                    users.push(v.clone());
+                                                    set_name(Some(v));
+                                                })
+                                                set_selected=move|name|{
+                                                    set_changed(true);
+                                                    set_name(name);
+                                                }
+                                                allow_deselect=false
+                                            />
+                                            <button on:click=move |_| {
+                                                set_changed(true);
+                                                set_people.update(|people| {
+                                                    people.retain(|p| {
+                                                        if p.id == person.id {
+                                                            if p.id > 0{
+                                                                set_delete_people.update(|delete|{
+                                                                    delete.push(p.id);
+                                                                });
+                                                            }
+                                                        }
+                                                        p.id != person.id
+                                                    })
+                                                });
+                                                name.dispose();
+                                            }>{"Remove"}</button>
+                                        </div>
+                                    }
+                                }
+                                }
+                                />
+                                <button class="edit_persons"
+                                    on:click=move |_| {
+                                        set_changed(true);
+                                        set_people.update(move |people|{
+                                            people.push(Person{
+                                                id: next_person_id.clone(),
+                                                bounds: None,
+                                                name: "".to_string(),
+                                        });
+                                        });
+                                        next_person_id-=1;
+                                    }><Icon class="icon" icon=icondata::FaPlusSolid/>
+                                </button>
+                            </div>
+                        <Show when=move||{update_error().is_some()}>
+                            <span>{update_error().unwrap()}</span>
+                        </Show>
+                        <br/>
+                        <div class="bottom-buttons">
+                            <button type="button" on:click=on_close_click.clone()>
+                                "Cancel"
+                            </button>
+                            <button type="button"
+                            on:click=on_edit_save.clone()>
+                                {if updating_users.get() {"Loading..."} else {"Save"}}
+                            </button>
+                        </div>
                     </div>
-                <Show when=move||{update_error().is_some()}>
-                    <span>{update_error().unwrap()}</span>
-                </Show>
-                <br/>
-                <div class="bottom-buttons">
-                    <button type="button" on:click=on_close_click.clone()>
-                        "Cancel"
-                    </button>
-                    <button type="button"
-                    on:click=on_edit_save.clone()>
-                        {if updating_users.get() {"Loading..."} else {"Save"}}
-                    </button>
-                </div>
-            </div>
+                }
+            }
         </Dialog>
     }
 }
