@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  photo-album:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ${HOME}/photo_album:/app/app/data
+    restart: always

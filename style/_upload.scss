@@ -1,0 +1,55 @@
+//Upload
+.upload-wrapper{
+    overflow-y:hidden;
+}
+
+.upload-content {
+	gap: 10px;
+    overflow-y:scroll;
+}
+
+.upload {
+    border: 1px solid gray;
+    margin-bottom: 25px;
+    padding-bottom: 5px;
+    padding-left: 2px;
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+
+.smallimg {
+	height: 400px;
+}
+
+.upload button {
+	width: 200px;
+	height: 30px;
+}
+
+.controls {
+    max-width: 50px;
+}
+
+.person {
+    width: 250px;
+}
+
+.leftright {
+    justify-content: space-between;
+}
+
+.profilepicture {
+    border-radius: 100;
+    width: 40px;
+    height: 40px;
+}
+
+.people-scroll {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    height:400px;
+    margin-right:20px;
+    overflow-y: scroll;
+}

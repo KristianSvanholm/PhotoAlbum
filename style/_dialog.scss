@@ -1,0 +1,61 @@
+@use 'color';
+@use 'dimensions';
+
+$available-height: calc(100vh - dimensions.$topbar-height);
+$padding: 20px;
+$max-content-height: calc($available-height * 0.9 - 2*$padding);
+
+/* The Modal (background) */
+.modal {
+    $close-color: color.$primary; 
+    $close-focus-color: color.$primary-active; 
+
+    display: block; /* Hidden by default */                     
+    position: fixed; /* Stay in place */
+    z-index: 1; /* Sit on top */
+    padding-top: dimensions.$topbar-height; /*Location of the box (under topbar)*/
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: hidden; /* Hide scroll on bakground */
+    background-color: color.$shadow; /* Black w/ opacity */
+    backdrop-filter: blur(5px);
+
+    /* Modal Content */
+    .modal-content {
+        background-color: color.$background-color;
+        margin: auto;
+        margin-top: calc($available-height * 0.05);
+        padding: $padding;
+        width: 80%;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px color.$strong-shadow;
+        max-height: calc($available-height * 0.9);/*$max-content-height;*//*maximum 90% under header*/
+        overflow-y: auto;
+        &.small{
+            width: max-content;
+            max-width: 90vw;
+            margin-top: calc($available-height * 0.5);
+            transform: translateY(-50%);
+        }
+    }
+
+    /* The Close Button */
+    .close {
+        color: $close-color;
+        float: right;
+        //font-size: 28px;
+        font-weight: bold;
+        &:hover,
+        &:focus {
+            color: $close-focus-color;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .icon{
+            height:28px;
+            width: 28px;
+        }
+    }
+}

@@ -1,0 +1,39 @@
+@use 'color';
+
+//Login and signup elements
+.loginForm, .signupForm {
+	text-align: center;
+	padding-top: 30px;
+}
+
+input[type="text"], input[type="password"], input[type="date"] {
+	width: 300px;
+	font-size: 17px;
+	height: 32px;
+  	margin: 8px;
+  	border: none;
+  	border-radius: 5px;
+	&:focus{
+		border: 2px solid color.$secondary;
+	}
+}	
+
+.rememberLabel {
+	font-size: 17px;
+	justify-content: center;
+	display: block;
+	align-self: start;
+}
+
+.rememberCheckbox {
+	margin-top: 10px;
+	display: inline-block;
+	vertical-align: sub;
+  	width: 30px;
+  	height: 30px;
+	accent-color: color.$primary;
+}
+
+.loginButton, .signupButton {
+	font-size: 17px;
+}

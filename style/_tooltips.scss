@@ -1,0 +1,47 @@
+@use 'color';
+
+//mostly copied from https://www.w3schools.com/css/css_tooltip.asp#:~:text=HTML%3A%20Use%20a%20container%20element,with%20class%3D%22tooltiptext%22%20.
+
+/* Tooltip text */
+.tooltiptext {
+    visibility: hidden;
+    width: 120px;
+    background-color: color.$secondary;
+    color: color.$on_secondary;
+    text-align: center;
+    padding: 5px 0;
+    border-radius: 6px;
+    font-size: small;
+
+    /* Position the tooltip above item! */
+    bottom: 100%;
+    left: 50%;
+    margin-left: -60px; /* Use half of the width (120/2 = 60), to center the tooltip */
+    margin-bottom: 5px;
+
+    position: absolute;
+    z-index: 1;
+}
+
+/* Tooltip container */
+.hastooltip {
+    display: inline-block;
+    position: relative;
+
+    //arrow
+    .tooltiptext::after {
+        content: " ";
+        position: absolute;
+        top: 100%; /* At the bottom of the tooltip */
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: color.$secondary transparent transparent transparent;
+    }
+
+    /* Show the tooltip text when you mouse over the tooltip container */
+    &:hover .tooltiptext {
+        visibility: visible;
+    }
+}
