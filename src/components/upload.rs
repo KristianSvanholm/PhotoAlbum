@@ -459,21 +459,20 @@ pub fn img_from_bounds(imgb64: String, bounds: Option<Bbox>) -> String {
     base64::encode(buf)
 }
 
-fn find_padding(x: i32, y: i32, padding: i32) -> i32 {
+fn find_padding(x: i32, y: i32, w:i32, h:i32, w_max:i32, h_max:i32, padding: i32) -> i32 {
     let x1 = x - padding;
+    let x2 = w_max - (x + w + padding);
     let y1 = y - padding;
+    let y2 = h_max - (y + h + padding);
 
-    if x1 >= 0 && y1 >= 0 {
+    if x1 >= 0 && y1 >= 0 && x2>0 && y2>=0{
         return padding;
     }
 
     // Whichever is the smallest,
     // "add" that (negative values, so it will subtract)
-    if x1 < y1 {
-        return padding + x1;
-    } else {
-        return padding + y1;
-    }
+    let smallest = std::cmp::min(std::cmp::min(std::cmp::min(x1,x2),y1),y2);
+    return padding + smallest;
 }
 
 #[cfg(feature = "ssr")]
