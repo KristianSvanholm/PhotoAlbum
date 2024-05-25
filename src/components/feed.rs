@@ -138,7 +138,7 @@ pub async fn fetch_files(
 }
 
 //Images per infinite feed requst
-const FETCH_IMAGE_COUNT: usize = 20;
+const FETCH_IMAGE_COUNT: usize = 10;
 
 async fn request_wrapper(
     db_index: usize,
@@ -177,26 +177,24 @@ where
     let initImgs: Vec<Element> = vec![];
     let (images, set_images) = create_signal(initImgs);
 
-    //Signal with resource called every time the bottom is reached in infinite feed
-    let _imageUpdater = create_resource(
-        move || db_index.get(),
+    // Signal with resource called every time the bottom is reached in infinite feed
+    let _image_updater = create_resource(
+        move || (db_index.get()),
         move |_| async move {
             if db_index.get_untracked() == 0 {
                 return;
             }
-
             let l_tags = filter.get_untracked().tags.clone();
             let l_people = filter.get_untracked().people.clone();
 
             let images = request_wrapper(
-                db_index.get_untracked(),
-                FETCH_IMAGE_COUNT,
+                db_index.get_untracked() as usize,
+                FETCH_IMAGE_COUNT as usize,
                 set_ready,
                 l_tags,
                 l_people,
             )
             .await;
-
             set_images.update(|imgs| imgs.extend(images));
             set_loading(false);
         },
@@ -229,29 +227,6 @@ where
                     Element::String(_) => true,
                 })
             })
-        },
-    );
-
-    // Signal with resource called every time the bottom is reached in infinite feed
-    let _image_updater = create_resource(
-        move || (db_index.get()),
-        move |_| async move {
-            if db_index.get_untracked() == 0 {
-                return;
-            }
-            let l_tags = filter.get_untracked().tags.clone();
-            let l_people = filter.get_untracked().people.clone();
-
-            let images = request_wrapper(
-                db_index.get_untracked() as usize,
-                FETCH_IMAGE_COUNT as usize,
-                set_ready,
-                l_tags,
-                l_people,
-            )
-            .await;
-            set_images.update(|imgs| imgs.extend(images));
-            set_loading(false);
         },
     );
 

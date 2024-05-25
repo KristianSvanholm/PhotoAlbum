@@ -177,6 +177,9 @@ pub async fn upload_media_server(
         // Spaces not allowed in tags
         tag.tag_string = str::replace(&tag.tag_string, " ", "-");
 
+        // Lowercase tags
+        tag.tag_string = tag.tag_string.to_lowercase();
+
         // Find or create new tag in db. Result is irrelevant, if it failed, the tag already
         // existed. If it succeeded, continue with new tag anyways.
         let _ = sqlx::query("INSERT INTO tags (tagString) VALUES (?)")

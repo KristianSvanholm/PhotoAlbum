@@ -12,7 +12,7 @@ use axum_login::{
     tower_sessions::{ExpiredDeletion, Expiry, Session, SessionManagerLayer},
     AuthManagerLayerBuilder,
 };
-use leptos::{get_configuration, leptos_dom::logging, logging::log, provide_context};
+use leptos::{get_configuration, logging::log, provide_context};
 use leptos_axum::{generate_route_list, handle_server_fns_with_context, LeptosRoutes};
 use photo_album::{
     app::*,
