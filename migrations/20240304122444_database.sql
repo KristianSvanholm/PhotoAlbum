@@ -29,10 +29,10 @@ create table IF NOT EXISTS files(
     id uuid primary key not null,
     folderId integer null,
     path text not null,
-    location POINT_2D null,
-    uploadedBy INTEGER null,
+    location text null,
+    uploadedBy INTEGER not null,
     uploadDate timestamp not null,
-    createdDate timestamp not null,
+    createdDate timestamp null,
     FOREIGN KEY(folderId) REFERENCES folders(id),
     FOREIGN KEY(uploadedBy) REFERENCES users(id)
 );

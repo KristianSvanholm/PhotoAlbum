@@ -1,0 +1,165 @@
+@use 'dialog';
+@use 'color';
+@use 'dimensions';
+
+.img_alt{
+    width:100%;
+    height: calc(dialog.$max-content-height - 10px - 31px); //make button bar fit in 
+    background-color: transparentize(color.$secondary, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.imageview{
+    img{
+        object-fit: contain;
+        width:100%;
+        max-height: dialog.$max-content-height;
+    }
+}
+
+.image-info{
+    .people{
+        @media (min-width: dimensions.$breakpoint-tablet) {
+            max-width: 60%;
+        }
+
+        h3{
+            margin-top: 0;
+        }
+
+        .faces{
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .face{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            img{
+                border-radius: 50%;
+                width:50px;
+                height:50px;
+            }
+            .person{
+                width: 150px;
+                font-size: 17px;
+                text-align: center;
+                margin: 8px;
+                border: none;
+                border-radius: 5px;
+                text-overflow: ellipsis;
+                &:focus{
+                    border: 2px solid color.$secondary;
+                }
+                input{
+                    width:100%;
+                }
+                
+            }	
+            span{
+                max-width: 100px;
+                text-align: center;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                text-wrap: nowrap;
+            }
+        }
+
+        .edit_persons{
+            border-radius: 50%;
+            width:50px;
+            height: 50px;
+            .icon{
+                font-size: 0px;
+                height: 40px;
+            }
+        }
+    }
+
+    .upload-info{
+        h3, p{
+            margin: 0; // 4px 0;
+        }
+
+        .icon{
+            margin-right: 4px;
+            height: 18px;
+            //font-size: large;
+        }
+
+        button .icon{
+            margin-right: 8px;
+            //font-size: medium;
+        }
+
+        padding: 1em 0;
+        display: flex;
+        gap: 4px;
+        //align-items: center;
+        flex-direction: column;
+    }
+
+    .wraper-h{
+        padding: 30px;
+        gap: 20px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+    }
+}
+
+.bottom-buttons{
+    display: flex;
+    justify-content: space-between;
+    padding-top: 10px;
+}
+
+.mobile_buttons{
+    @media (min-width: dimensions.$breakpoint-pc) {
+        display: none;
+    }
+}
+
+@mixin pc-button{
+    @media (max-width: dimensions.$breakpoint-pc) {
+        display: none;
+    }
+    position: absolute;
+    background-color: color.$strong-shadow;
+}
+
+.bottom-buttons-left{
+    @include pc-button;
+    top: 20%;
+    left: 2%;
+    height: 60%;
+    width: 6%;
+
+    &:disabled{
+        display:none;
+    }
+}
+
+.bottom-buttons-close {
+    @include pc-button;
+    font-size: 40px;
+    top: 6%;
+    left: 86%;
+}   
+
+.bottom-buttons-right{
+    @include pc-button;
+    top: 20%;
+    left: 92%;
+    height: 60%;
+    width: 6%;
+    &:disabled{
+        display: none;
+    }
+}

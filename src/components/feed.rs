@@ -19,13 +19,12 @@ pub struct ImageDb {
     id: String,
     path: String,
     upload_date: String,
-    created_date: String,
 }
 
 #[cfg_attr(feature = "ssr", derive(sqlx::FromRow))]
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, Hash, PartialEq)]
 pub struct PrevImageDb {
-    created_date: String,
+    uploaded_date: String,
 }
 
 //Takes a date string and image struct
@@ -58,7 +57,7 @@ pub async fn fetch_files(
         return Ok(vec![]);
     }
 
-    let base_query = "SELECT DISTINCT f.id, f.path, f.uploadDate AS upload_date, f.createdDate AS created_date FROM files f";
+    let base_query = "SELECT DISTINCT f.id, f.path, f.uploadDate AS upload_date FROM files f";
     let (conditions, joins, binds) =
         image_filter::prepare_filtered_query_with_pagination(tags, people, count, db_index).await;
 
@@ -66,7 +65,7 @@ pub async fn fetch_files(
         base_query.to_string(),
         conditions,
         joins,
-        Some("f.createdDate DESC".to_string()),
+        Some("f.uploadDate DESC".to_string()),
         Some(count),
         Some(db_index),
     );
@@ -77,7 +76,6 @@ pub async fn fetch_files(
     }
 
     let mut files: Vec<ImageDb> = query.fetch_all(&pool).await?;
-
     for img in &mut files {
         // Read the image file
         let mut file = File::open(&img.path).expect("Failed to open image file");
@@ -99,7 +97,7 @@ pub async fn fetch_files(
     //Prevent checking previous date on the first request
     if db_index > 0 {
         prevfile = Some(sqlx::query_as::<_, PrevImageDb>(
-            "SELECT createdDate AS created_date FROM files ORDER BY createdDate DESC LIMIT ? OFFSET ?;",
+            "SELECT uploadDate AS uploaded_date FROM files ORDER BY uploadDate DESC LIMIT ? OFFSET ?;",
         )
         .bind(1.to_string())
         .bind((db_index-1).to_string())
@@ -113,15 +111,15 @@ pub async fn fetch_files(
     //When there is a previous date
     if prevfile.is_some() {
         //Access previous date requested
-        current_month = prevfile.clone().unwrap().created_date[5..7].to_string();
-        current_year = prevfile.clone().unwrap().created_date[0..4].to_string();
+        current_month = prevfile.clone().unwrap().uploaded_date[5..7].to_string();
+        current_year = prevfile.clone().unwrap().uploaded_date[0..4].to_string();
     }
 
     let mut c: i64 = 0;
     //Iterates over sorted images and adds years and months
     for image in files {
-        let year = image.created_date[0..4].to_string();
-        let month = image.created_date[5..7].to_string();
+        let year = image.upload_date[0..4].to_string();
+        let month = image.upload_date[5..7].to_string();
         if month != current_month || year != current_year {
             //Add year on change
             if year != current_year {
@@ -140,7 +138,7 @@ pub async fn fetch_files(
 }
 
 //Images per infinite feed requst
-const FETCH_IMAGE_COUNT: usize = 20;
+const FETCH_IMAGE_COUNT: usize = 10;
 
 async fn request_wrapper(
     db_index: usize,
@@ -161,7 +159,14 @@ async fn request_wrapper(
 
 //Creates an infinite feed of images
 #[component]
-pub fn InfiniteFeed(filter: ReadSignal<Filters>) -> impl IntoView {
+pub fn infinite_feed<F>(
+    on_image_click: F,
+    send_id: ReadSignal<Option<String>>,
+    filter: ReadSignal<Filters>,
+) -> impl IntoView
+where
+    F: Fn(String) + 'static + Clone + Copy,
+{
     use crate::components::loading::Loading_Triangle;
 
     let (ready, set_ready) = create_signal(true);
@@ -171,21 +176,6 @@ pub fn InfiniteFeed(filter: ReadSignal<Filters>) -> impl IntoView {
 
     let initImgs: Vec<Element> = vec![];
     let (images, set_images) = create_signal(initImgs);
-
-    let _filter_updater = create_resource(
-        move || (filter.get()),
-        move |_| async move {
-            set_images.set(vec![]);
-            set_db_index.set(0);
-
-            let l_tags = filter.get_untracked().tags.clone();
-            let l_people = filter.get_untracked().people.clone();
-
-            let images = request_wrapper(0, FETCH_IMAGE_COUNT, set_ready, l_tags, l_people).await;
-            set_images.update(|imgs| imgs.extend(images));
-            set_loading(false);
-        },
-    );
 
     // Signal with resource called every time the bottom is reached in infinite feed
     let _image_updater = create_resource(
@@ -207,6 +197,36 @@ pub fn InfiniteFeed(filter: ReadSignal<Filters>) -> impl IntoView {
             .await;
             set_images.update(|imgs| imgs.extend(images));
             set_loading(false);
+        },
+    );
+
+    let _filter_updater = create_resource(
+        move || (filter.get()),
+        move |_| async move {
+            set_images.set(vec![]);
+            set_db_index.set(0);
+
+            let l_tags = filter.get_untracked().tags.clone();
+            let l_people = filter.get_untracked().people.clone();
+
+            let images = request_wrapper(0, FETCH_IMAGE_COUNT, set_ready, l_tags, l_people).await;
+            set_images.update(|imgs| imgs.extend(images));
+            set_loading(false);
+        },
+    );
+
+    //Runs through the vector and removes the deleted image
+    let _run_delete = create_resource(
+        move || send_id.get(),
+        move |_id| async move {
+            set_images.update(|imgs| {
+                imgs.retain(|image| match image {
+                    Element::ImageDb(img) => {
+                        img.get_untracked().id != send_id.get_untracked().unwrap_or_default()
+                    }
+                    Element::String(_) => true,
+                })
+            })
         },
     );
 
@@ -242,7 +262,7 @@ pub fn InfiniteFeed(filter: ReadSignal<Filters>) -> impl IntoView {
     view! {
         <div class="feedContainer">
             <div class="flowdiv" node_ref=el>
-        //Change display of feed
+                //Change display of feed
                 <div class="feedSettings break">
                     <button id="displayFeed" on:click=move |_| {
                         if num.get() == 0 {
@@ -264,8 +284,15 @@ pub fn InfiniteFeed(filter: ReadSignal<Filters>) -> impl IntoView {
                         Element::ImageDb(ref img) => {
                         view!{
                             <div class={move || imageDisplayClass.get()}>
-                                    <img src={format!("data:image/jpeg;base64,{}", img.get().path)} alt="Base64 Image" class="image imageSmooth" />
-                                </div>
+                            {
+                                let id = img.get().id.clone();
+                                view!{
+                                    <img
+                                        on:click=move |_|{on_image_click(id.clone())}
+                                        src={format!("data:image/jpeg;base64,{}", img.get().path)} alt="Base64 Image" class="image imageSmooth" />
+                                }
+                            }
+                            </div>
                     }},
                     //Date
                         Element::String(ref date) => {

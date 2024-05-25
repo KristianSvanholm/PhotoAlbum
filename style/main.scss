@@ -2,6 +2,7 @@
 @use "./leptonic/leptonic-themes";
 
 @use 'default';
+@use 'tooltips';
 @use 'dialog';
 @use 'topbar';
 @use 'upload';
@@ -9,4 +10,5 @@
 @use 'login_logout_signup';
 @use 'admin';
 @use 'loading';
+@use 'image_view.scss';
 @use 'homepage';

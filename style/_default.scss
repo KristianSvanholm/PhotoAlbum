@@ -25,16 +25,26 @@ button {
     transition: background-color 0.3s ease;
     cursor: pointer;
 	&:hover{
-		background-color: color.$primary-active
+		background-color: color.$primary-active;
+	}
+	&[disabled]{
+		background-color: mix(color.$primary, color.$on-primary, 70%); //desaturate(color.$primary, 30%);
+		color: mix(color.$primary, color.$on-primary, 40%); //darken(color.$on-primary, 50%)
+		cursor: default;
 	}
 }
   
 .horizontal {
     display: flex;
+    text-align: center;
     flex-direction:row;
     flex-wrap:nowrap;
     gap:10px;
     margin: 5px;
+    
+    p {
+        margin-top: 7px;
+    }
 }
 
 //Custom scrollbar
@@ -74,14 +84,19 @@ button {
 	font-size: 40px; 
 	height: 70px;
 	width: 70px;
+	padding: 15px;
 	box-shadow: 0 2px 4px color.$strong-shadow;
     text-align: center;
+	.icon{
+		height: 40px;
+	}
 }
 
 .icon {
-	display: flex; 
+	display: inline-block; 
 	justify-content: center; 
 	align-items: center;
+    font-size: large;
 }
 
 //center conten-horizontally 

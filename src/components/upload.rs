@@ -3,6 +3,7 @@ use crate::auth;
 use crate::components::home_page::{get_tags, Tag};
 use crate::components::users::{get_user_list_sans_admin, UserInfo};
 use futures::future;
+use image::DynamicImage;
 use leptonic::components::select::{Multiselect, OptionalSelect};
 use leptos::{html::Input, *};
 #[cfg(feature = "ssr")]
@@ -18,10 +19,10 @@ pub struct MediaPayload {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Bbox {
-    x: u32,
-    y: u32,
-    w: u32,
-    h: u32,
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
 }
 
 #[cfg(feature = "ssr")]
@@ -38,12 +39,12 @@ impl Bbox {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Person {
-    bounds: Option<Bbox>,
-    name: String,
-    id: usize,
+    pub bounds: Option<Bbox>,
+    pub name: String,
+    pub id: i64,
 }
 
-#[server(Faces, "/api", "Cbor")]
+#[server(Faces, "/api")]
 pub async fn faces(image_b64: String) -> Result<Vec<Bbox>, ServerFnError> {
     auth::logged_in().await?;
 
@@ -66,7 +67,7 @@ pub async fn faces(image_b64: String) -> Result<Vec<Bbox>, ServerFnError> {
     Ok(faces)
 }
 
-fn decode_image(encoded_string: String) -> image::DynamicImage {
+pub fn decode_image(encoded_string: String) -> image::DynamicImage {
     let bytes = base64::decode(encoded_string).expect("Failed to decode image");
     image::load_from_memory(&bytes).expect("Failed to load image")
 }
@@ -95,15 +96,16 @@ pub async fn upload_media_server(
 
     let pool = pool()?;
 
-    if !Path::new("./album").exists() {
-        let _ = fs::create_dir_all("./album")?;
+    let album_path = "./app/data/album";
+    if !Path::new(album_path).exists() {
+        let _ = fs::create_dir_all(album_path)?;
     }
 
     use uuid::Uuid;
     let file_ext = extract_ext(filename).expect_throw("Missing file extension");
     let uuid = Uuid::new_v4().to_string();
 
-    let path = format!("./album/{}.{}", uuid, file_ext);
+    let path = format!("{}/{}.{}", album_path, uuid, file_ext);
     let bytes = base64::decode(encoded_string).expect_throw("Failed to decode base64");
 
     fs::write(&path, bytes).expect_throw("Failed to write file");
@@ -174,6 +176,9 @@ pub async fn upload_media_server(
 
         // Spaces not allowed in tags
         tag.tag_string = str::replace(&tag.tag_string, " ", "-");
+
+        // Lowercase tags
+        tag.tag_string = tag.tag_string.to_lowercase();
 
         // Find or create new tag in db. Result is irrelevant, if it failed, the tag already
         // existed. If it succeeded, continue with new tag anyways.
@@ -343,6 +348,7 @@ pub fn UploadMedia() -> impl IntoView {
                         media().iter().map(|(filename, encoded_string, names, tags)| {
                             let f = filename.clone();
                             let e = encoded_string.clone();
+                            let img = decode_image(e.clone());
                             let name_list = names.clone();
                             let tag_list = tags.clone();
 
@@ -375,14 +381,14 @@ pub fn UploadMedia() -> impl IntoView {
                                                                 None => return,
                                                             };
 
-                                                            name_list.update(|vs| vs[idx.id].name = v.username)
+                                                            name_list.update(|vs| vs[idx.id as usize].name = v.username)
                                                         },
                                                     );
 
 
                                                     view!{
                                                         <div class="horizontal person-wrapper">
-                                                            <img class="profilepicture" src={format!("data:image/png;base64,{}", img_from_bounds(e.clone(), idx.bounds))} />
+                                                            <img class="profilepicture" src={format!("data:image/webp;base64,{}", img_from_bounds(&img, idx.bounds))} />
                                                             <OptionalSelect class="person"
                                                                 options=users
                                                                 search_text_provider=move |o: UserInfo| o.username
@@ -398,23 +404,9 @@ pub fn UploadMedia() -> impl IntoView {
                                             />
                                             </div>
                                         </div>
-                                        <div class="horizontal">
-                                            <button on:click=move |_| {
-                                                let mut m = media.get_untracked();
-                                                m.retain(|(filename, _, _, _)| filename != &f);
-                                                set_media(m);
-
-                                                set_memory(memory_count() - 1);
-
-                                            }>"Remove"</button>
-                                            <button class="controls" on:click=move |_| {
-                                                name_list.update(|v| v.push(Person{name:"".to_string(), id: v.len(), bounds: None}));
-                                                }>+</button>
-                                            <button class="controls" on:click=move |_| {
-                                                name_list.update(|v| { v.pop(); });
-                                            }>-</button>
-
-                                        </div>
+                                        <div class="horizontal leftright">
+                                            <div class="horizontal">
+                                            <p>Tags</p>
                                             <Multiselect class="mselect"
                                                 options = tag_options
                                                 search_text_provider=move |o: Tag| o.tag_string
@@ -423,6 +415,24 @@ pub fn UploadMedia() -> impl IntoView {
                                                 add=move |v: String| tag_options.update(|ts| ts.push(Tag{tag_string: v}))
                                                 set_selected=set_tags
                                             ></Multiselect>
+                                            </div>
+                                            <div class="horizontal">
+                                                <button on:click=move |_| {
+                                                    let mut m = media.get_untracked();
+                                                    m.retain(|(filename, _, _, _)| filename != &f);
+                                                    set_media(m);
+
+                                                    set_memory(memory_count() - 1);
+
+                                                }>"Remove"</button>
+                                                <button class="controls" on:click=move |_| {
+                                                    name_list.update(|v| v.push(Person{name:"".to_string(), id: v.len() as i64, bounds: None}));
+                                                    }>+</button>
+                                                <button class="controls" on:click=move |_| {
+                                                    name_list.update(|v| { v.pop(); });
+                                                }>-</button>
+                                            </div>
+                                        </div>
                                     </div>
                             }
                         }).collect::<Vec<_>>()
@@ -435,26 +445,39 @@ pub fn UploadMedia() -> impl IntoView {
 }
 
 const FACE_PADDING: i32 = 25;
-fn img_from_bounds(imgb64: String, bounds: Option<Bbox>) -> String {
-    let mut image = decode_image(imgb64.clone());
+pub fn img_from_bounds(img: &DynamicImage, bounds: Option<Bbox>) -> String {
+    let mut image = img.clone();
+    let mut buf: Vec<u8> = Vec::new();
 
     let b = match bounds {
         Some(bounds) => bounds,
-        None => return imgb64,
+        None => {
+            img.write_to(
+                &mut std::io::Cursor::new(&mut buf),
+                image::ImageFormat::WebP,
+            )
+            .unwrap();
+
+            return base64::encode(buf);
+        }
     };
 
     let padding: u32 = find_padding(b.x as i32, b.y as i32, FACE_PADDING) as u32;
 
-    let mut buf: Vec<u8> = Vec::new();
-    image
+    logging::log!("{} {}.{}.{}.{}", padding, b.x, b.y, b.w, b.h);
+    logging::log!("{} {}", image.width(), image.height());
+
+    let _ = image
         .crop(
             b.x - padding,
             b.y - padding,
             b.w + padding * 2,
             b.h + padding * 2,
         )
-        .write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png)
-        .unwrap();
+        .write_to(
+            &mut std::io::Cursor::new(&mut buf),
+            image::ImageFormat::WebP,
+        );
 
     base64::encode(buf)
 }
@@ -515,7 +538,7 @@ async fn convert_file_to_b64(
         for i in 0..faces.len() {
             names_init.push(Person {
                 name: "".to_string(),
-                id: i,
+                id: i as i64,
                 bounds: Some(faces[i].clone()),
             });
         }

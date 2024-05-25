@@ -47,7 +47,13 @@ pub fn App() -> impl IntoView {
                 logout.version().get(),
             )
         },
-        move |_| get_user(),
+        |_| async move {
+            let user = get_user().await;
+            if let Ok(Some(u)) = user.clone() {
+                provide_context(u);
+            }
+            user
+        },
     );
 
     let navref: leptos::NodeRef<Nav> = create_node_ref();
@@ -71,8 +77,9 @@ pub fn App() -> impl IntoView {
 
     view! {
         <Root default_theme=LeptonicTheme::default()>
-        <Link rel="shortcut icon" type_="image/ico" href="/favicon.ico"/>
+
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
+        <Link rel="shortcut icon" type_="image/ico" href="/favicon.ico"/>
         <Stylesheet id="leptos" href="/pkg/photo-album.css"/>
         <Router>
                 //###############
@@ -185,6 +192,7 @@ pub fn App() -> impl IntoView {
 #[component]
 fn HomePage() -> impl IntoView {
     use crate::components::home_page::HomePage;
+
     view! {
         <HomePage/>
     }
