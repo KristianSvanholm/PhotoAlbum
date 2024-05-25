@@ -96,7 +96,7 @@ pub async fn upload_media_server(
 
     let pool = pool()?;
 
-    let album_path = "/app/data/album";
+    let album_path = "./app/data/album";
     if !Path::new(album_path).exists() {
         let _ = fs::create_dir_all(album_path)?;
     }
@@ -463,7 +463,8 @@ pub fn img_from_bounds(img: &DynamicImage, bounds: Option<Bbox>) -> String {
 
     logging::log!("{} {}.{}.{}.{}", padding, b.x, b.y, b.w, b.h);
     logging::log!("{} {}", image.width(), image.height());
-    image
+
+    let _ = image
         .crop(
             b.x - padding,
             b.y - padding,
@@ -473,8 +474,7 @@ pub fn img_from_bounds(img: &DynamicImage, bounds: Option<Bbox>) -> String {
         .write_to(
             &mut std::io::Cursor::new(&mut buf),
             image::ImageFormat::WebP,
-        )
-        .unwrap();
+        );
 
     base64::encode(buf)
 }
