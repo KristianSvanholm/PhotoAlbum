@@ -1,17 +1,31 @@
 @use 'color';
 
+.container {
+    transform-origin: center;
+    overflow: visible;
+    padding: 30px;
+    animation: rotation 1.2s linear infinite;
+}
+
 .loading {
     stroke: color.$secondary; 
+    opacity: 0.1;
 }
 
 .loading-thumb {
-    stroke-dasharray: 20 80;
-    animation: dashoffset 1.5s linear infinite;
+    stroke-dasharray: 15 85;
+    animation: dashoffset 2.4s linear infinite;
     stroke: color.$secondary; 
 }
   
 @keyframes dashoffset {
     to {
-      stroke-dashoffset: 100;
+      stroke-dashoffset: -100;
+    }
+}
+  
+@keyframes rotation {
+    to {
+      transform: rotate(-360deg);
     }
 }
