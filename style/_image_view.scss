@@ -44,8 +44,8 @@
                 border-radius: 50%;
                 width:50px;
             }
-            input[type="text"]{
-                width: 100px;
+            .person{
+                width: 150px;
                 font-size: 17px;
                 text-align: center;
                 margin: 8px;
@@ -55,6 +55,10 @@
                 &:focus{
                     border: 2px solid color.$secondary;
                 }
+                input{
+                    width:100%;
+                }
+                
             }	
             span{
                 max-width: 100px;

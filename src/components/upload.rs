@@ -18,10 +18,10 @@ pub struct MediaPayload {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Bbox {
-    x: u32,
-    y: u32,
-    w: u32,
-    h: u32,
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
 }
 
 #[cfg(feature = "ssr")]
@@ -38,9 +38,9 @@ impl Bbox {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Person {
-    bounds: Option<Bbox>,
-    name: String,
-    id: usize,
+    pub bounds: Option<Bbox>,
+    pub name: String,
+    pub id: i64,
 }
 
 #[server(Faces, "/api", "Cbor")]
@@ -375,7 +375,7 @@ pub fn UploadMedia() -> impl IntoView {
                                                                 None => return,
                                                             };
 
-                                                            name_list.update(|vs| vs[idx.id].name = v.username)
+                                                            name_list.update(|vs| vs[idx.id as usize].name = v.username)
                                                         },
                                                     );
 
@@ -408,7 +408,7 @@ pub fn UploadMedia() -> impl IntoView {
 
                                             }>"Remove"</button>
                                             <button class="controls" on:click=move |_| {
-                                                name_list.update(|v| v.push(Person{name:"".to_string(), id: v.len(), bounds: None}));
+                                                name_list.update(|v| v.push(Person{name:"".to_string(), id: v.len() as i64, bounds: None}));
                                                 }>+</button>
                                             <button class="controls" on:click=move |_| {
                                                 name_list.update(|v| { v.pop(); });
@@ -435,7 +435,7 @@ pub fn UploadMedia() -> impl IntoView {
 }
 
 const FACE_PADDING: i32 = 25;
-fn img_from_bounds(imgb64: String, bounds: Option<Bbox>) -> String {
+pub fn img_from_bounds(imgb64: String, bounds: Option<Bbox>) -> String {
     let mut image = decode_image(imgb64.clone());
 
     let b = match bounds {
@@ -515,7 +515,7 @@ async fn convert_file_to_b64(
         for i in 0..faces.len() {
             names_init.push(Person {
                 name: "".to_string(),
-                id: i,
+                id: i as i64,
                 bounds: Some(faces[i].clone()),
             });
         }
