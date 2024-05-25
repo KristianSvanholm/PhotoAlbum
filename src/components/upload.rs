@@ -400,23 +400,9 @@ pub fn UploadMedia() -> impl IntoView {
                                             />
                                             </div>
                                         </div>
-                                        <div class="horizontal">
-                                            <button on:click=move |_| {
-                                                let mut m = media.get_untracked();
-                                                m.retain(|(filename, _, _, _)| filename != &f);
-                                                set_media(m);
-
-                                                set_memory(memory_count() - 1);
-
-                                            }>"Remove"</button>
-                                            <button class="controls" on:click=move |_| {
-                                                name_list.update(|v| v.push(Person{name:"".to_string(), id: v.len() as i64, bounds: None}));
-                                                }>+</button>
-                                            <button class="controls" on:click=move |_| {
-                                                name_list.update(|v| { v.pop(); });
-                                            }>-</button>
-
-                                        </div>
+                                        <div class="horizontal leftright">
+                                            <div class="horizontal">
+                                            <p>Tags</p>
                                             <Multiselect class="mselect"
                                                 options = tag_options
                                                 search_text_provider=move |o: Tag| o.tag_string
@@ -425,6 +411,24 @@ pub fn UploadMedia() -> impl IntoView {
                                                 add=move |v: String| tag_options.update(|ts| ts.push(Tag{tag_string: v}))
                                                 set_selected=set_tags
                                             ></Multiselect>
+                                            </div>
+                                            <div class="horizontal">
+                                                <button on:click=move |_| {
+                                                    let mut m = media.get_untracked();
+                                                    m.retain(|(filename, _, _, _)| filename != &f);
+                                                    set_media(m);
+
+                                                    set_memory(memory_count() - 1);
+
+                                                }>"Remove"</button>
+                                                <button class="controls" on:click=move |_| {
+                                                    name_list.update(|v| v.push(Person{name:"".to_string(), id: v.len() as i64, bounds: None}));
+                                                    }>+</button>
+                                                <button class="controls" on:click=move |_| {
+                                                    name_list.update(|v| { v.pop(); });
+                                                }>-</button>
+                                            </div>
+                                        </div>
                                     </div>
                             }
                         }).collect::<Vec<_>>()
