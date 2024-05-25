@@ -7,11 +7,12 @@ use axum::{
     routing::get,
     Router,
 };
+use std::fs::{self};
 use axum_login::{
     tower_sessions::{ExpiredDeletion, Expiry, Session, SessionManagerLayer},
     AuthManagerLayerBuilder,
 };
-use leptos::{get_configuration, logging::log, provide_context};
+use leptos::{get_configuration, leptos_dom::logging, logging::log, provide_context};
 use leptos_axum::{generate_route_list, handle_server_fns_with_context, LeptosRoutes};
 use photo_album::{
     app::*,
@@ -103,13 +104,21 @@ async fn main() {
 
     simple_logger::init_with_level(log::Level::Info).expect("couldn't initialize logging");
 
-    let db_path = "/app/data/database.db";
+    let db_path = "./app/data/database.db";
+    let db_dir = Path::new(db_path).parent().unwrap();
+
+    if !db_dir.exists() {
+        println!("Directory does not exist, creating it.");
+        fs::create_dir_all(db_dir).expect("Could not create directories.");
+    }
+
     if !Path::new(db_path).exists() {
-        let _ = File::create(db_path);
+        println!("Database does not exist, creating it.");
+        File::create(db_path).expect("Could not create database file.");
     }
 
     let pool = SqlitePoolOptions::new()
-        .connect(format!("sqlite://{}", db_path).as_str())
+        .connect(format!("sqlite:{}", db_path).as_str())
         .await
         .expect("Could not make pool.");
 
