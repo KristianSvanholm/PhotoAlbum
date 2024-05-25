@@ -3,6 +3,7 @@ use crate::auth;
 use crate::components::home_page::{get_tags, Tag};
 use crate::components::users::{get_user_list_sans_admin, UserInfo};
 use futures::future;
+use image::DynamicImage;
 use leptonic::components::select::{Multiselect, OptionalSelect};
 use leptos::{html::Input, *};
 #[cfg(feature = "ssr")]
@@ -43,7 +44,7 @@ pub struct Person {
     pub id: i64,
 }
 
-#[server(Faces, "/api", "Cbor")]
+#[server(Faces, "/api")]
 pub async fn faces(image_b64: String) -> Result<Vec<Bbox>, ServerFnError> {
     auth::logged_in().await?;
 
@@ -66,7 +67,7 @@ pub async fn faces(image_b64: String) -> Result<Vec<Bbox>, ServerFnError> {
     Ok(faces)
 }
 
-fn decode_image(encoded_string: String) -> image::DynamicImage {
+pub fn decode_image(encoded_string: String) -> image::DynamicImage {
     let bytes = base64::decode(encoded_string).expect("Failed to decode image");
     image::load_from_memory(&bytes).expect("Failed to load image")
 }
@@ -343,6 +344,7 @@ pub fn UploadMedia() -> impl IntoView {
                         media().iter().map(|(filename, encoded_string, names, tags)| {
                             let f = filename.clone();
                             let e = encoded_string.clone();
+                            let img = decode_image(e.clone());
                             let name_list = names.clone();
                             let tag_list = tags.clone();
 
@@ -382,7 +384,7 @@ pub fn UploadMedia() -> impl IntoView {
 
                                                     view!{
                                                         <div class="horizontal person-wrapper">
-                                                            <img class="profilepicture" src={format!("data:image/png;base64,{}", img_from_bounds(e.clone(), idx.bounds))} />
+                                                            <img class="profilepicture" src={format!("data:image/webp;base64,{}", img_from_bounds(&img, idx.bounds))} />
                                                             <OptionalSelect class="person"
                                                                 options=users
                                                                 search_text_provider=move |o: UserInfo| o.username
@@ -435,17 +437,27 @@ pub fn UploadMedia() -> impl IntoView {
 }
 
 const FACE_PADDING: i32 = 25;
-pub fn img_from_bounds(imgb64: String, bounds: Option<Bbox>) -> String {
-    let mut image = decode_image(imgb64.clone());
+pub fn img_from_bounds(img: &DynamicImage, bounds: Option<Bbox>) -> String {
+    let mut image = img.clone();
+    let mut buf: Vec<u8> = Vec::new();
 
     let b = match bounds {
         Some(bounds) => bounds,
-        None => return imgb64,
+        None => {
+            img.write_to(
+                &mut std::io::Cursor::new(&mut buf),
+                image::ImageFormat::WebP,
+            )
+            .unwrap();
+
+            return base64::encode(buf);
+        }
     };
 
-    let padding: u32 = find_padding(b.x as i32, b.y as i32, b.w as i32, b.h as i32, image.width() as i32, image.height() as i32, FACE_PADDING) as u32;
+    let padding: u32 = find_padding(b.x as i32, b.y as i32, FACE_PADDING) as u32;
 
-    let mut buf: Vec<u8> = Vec::new();
+    logging::log!("{} {}.{}.{}.{}", padding, b.x, b.y, b.w, b.h);
+    logging::log!("{} {}", image.width(), image.height());
     image
         .crop(
             b.x - padding,
@@ -453,26 +465,30 @@ pub fn img_from_bounds(imgb64: String, bounds: Option<Bbox>) -> String {
             b.w + padding * 2,
             b.h + padding * 2,
         )
-        .write_to(&mut std::io::Cursor::new(&mut buf), image::ImageFormat::Png)
+        .write_to(
+            &mut std::io::Cursor::new(&mut buf),
+            image::ImageFormat::WebP,
+        )
         .unwrap();
 
     base64::encode(buf)
 }
 
-fn find_padding(x: i32, y: i32, w:i32, h:i32, w_max:i32, h_max:i32, padding: i32) -> i32 {
+fn find_padding(x: i32, y: i32, padding: i32) -> i32 {
     let x1 = x - padding;
-    let x2 = w_max - (x + w + padding);
     let y1 = y - padding;
-    let y2 = h_max - (y + h + padding);
 
-    if x1 >= 0 && y1 >= 0 && x2>0 && y2>=0{
+    if x1 >= 0 && y1 >= 0 {
         return padding;
     }
 
     // Whichever is the smallest,
     // "add" that (negative values, so it will subtract)
-    let smallest = std::cmp::min(std::cmp::min(std::cmp::min(x1,x2),y1),y2);
-    return padding + smallest;
+    if x1 < y1 {
+        return padding + x1;
+    } else {
+        return padding + y1;
+    }
 }
 
 #[cfg(feature = "ssr")]

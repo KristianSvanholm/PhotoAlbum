@@ -4,23 +4,20 @@
 }
 
 .upload-content {
-	display: flex;
-	flex-direction: row;
-	flex-wrap: wrap;
 	gap: 10px;
-    max-height:450px;
     overflow-y:scroll;
 }
 
 .upload {
+    border: 1px solid gray;
+    margin-bottom: 25px;
 	display: flex;
 	flex-direction: column;
 	gap: 5px;
 }
 
 .smallimg {
-	width: 200px;
-	height: 200px;
+	height: 400px;
 }
 
 .upload button {
@@ -37,7 +34,7 @@
 }
 
 .person-wrapper {
-    width: 200px;
+
 }
 
 .profilepicture {
@@ -47,8 +44,10 @@
 }
 
 .people-scroll {
-    height:200px;
-    width: 305px;
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    height:400px;
     margin-right:20px;
     overflow-y: scroll;
 }
